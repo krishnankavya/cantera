@@ -5,7 +5,9 @@
  *  Kinetics managers calculate rates of progress of species due to
  *  homogeneous or heterogeneous kinetics.
  */
-// Copyright 2001-2004  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/kinetics/Kinetics.h"
 #include "cantera/kinetics/Reaction.h"
@@ -57,8 +59,6 @@ Kinetics& Kinetics::operator=(const Kinetics& right)
     m_surfphase = right.m_surfphase;
     m_rxnphase = right.m_rxnphase;
     m_mindim = right.m_mindim;
-    m_rgroups = right.m_rgroups;
-    m_pgroups = right.m_pgroups;
     m_rfn = right.m_rfn;
     m_rkcn = right.m_rkcn;
     m_ropf = right.m_ropf;
@@ -645,6 +645,12 @@ void Kinetics::modifyReaction(size_t i, shared_ptr<Reaction> rNew)
 }
 
 shared_ptr<Reaction> Kinetics::reaction(size_t i)
+{
+    checkReactionIndex(i);
+    return m_reactions[i];
+}
+    
+shared_ptr<const Reaction> Kinetics::reaction(size_t i) const
 {
     checkReactionIndex(i);
     return m_reactions[i];

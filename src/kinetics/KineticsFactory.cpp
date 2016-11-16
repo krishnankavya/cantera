@@ -1,7 +1,9 @@
 /**
  *  @file KineticsFactory.cpp
  */
-// Copyright 2001  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/kinetics/KineticsFactory.h"
 #include "cantera/kinetics/GasKinetics.h"
@@ -47,7 +49,7 @@ KineticsFactory::KineticsFactory() {
 
 Kinetics* KineticsFactory::newKinetics(const string& model)
 {
-    return create(lowercase(model));
+    return create(ba::to_lower_copy(model));
 }
 
 }

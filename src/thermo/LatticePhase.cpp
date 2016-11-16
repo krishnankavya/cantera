@@ -5,6 +5,10 @@
  *  assuming a lattice of solid atoms
  *  (see \ref thermoprops and class \link Cantera::LatticePhase LatticePhase\endlink).
  */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/thermo/LatticePhase.h"
 #include "cantera/thermo/ThermoFactory.h"
 #include "cantera/base/stringUtils.h"
@@ -280,10 +284,9 @@ void LatticePhase::initThermoXML(XML_Node& phaseNode, const std::string& id_)
     // <thermo model="Lattice" />
     if (phaseNode.hasChild("thermo")) {
         XML_Node& thNode = phaseNode.child("thermo");
-        std::string mString = thNode.attrib("model");
-        if (lowercase(mString) != "lattice") {
+        if (!ba::iequals(thNode["model"], "lattice")) {
             throw CanteraError("LatticePhase::initThermoXML",
-                               "Unknown thermo model: " + mString);
+                               "Unknown thermo model: " + thNode["model"]);
         }
     } else {
         throw CanteraError("LatticePhase::initThermoXML",

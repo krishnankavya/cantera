@@ -2,6 +2,9 @@
  * @file Sim1D.cpp
  */
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/oneD/Sim1D.h"
 #include "cantera/oneD/MultiJac.h"
 #include "cantera/oneD/StFlow.h"
@@ -198,7 +201,7 @@ void Sim1D::finalize()
     }
 }
 
-void Sim1D::setTimeStep(doublereal stepsize, size_t n, integer* tsteps)
+void Sim1D::setTimeStep(double stepsize, size_t n, const int* tsteps)
 {
     m_tstep = stepsize;
     m_steps.resize(n);
@@ -327,10 +330,6 @@ void Sim1D::solve(int loglevel, bool refine_grid)
             if (new_points && loglevel > 7) {
                 saveResidual("debug_sim1d.xml", "residual",
                              "After regridding");
-            }
-            if (new_points < 0) {
-                writelog("Maximum number of grid points reached.");
-                new_points = 0;
             }
         } else {
             debuglog("grid refinement disabled.\n", loglevel);
@@ -552,6 +551,12 @@ void Sim1D::setMaxGridPoints(int dom, int npoints)
     }
 }
 
+size_t Sim1D::maxGridPoints(size_t dom)
+{
+    Refiner& r = domain(dom).refiner();
+    return r.maxPoints();
+}
+
 doublereal Sim1D::jacobian(int i, int j)
 {
     return OneDim::jacobian().value(i,j);
@@ -560,6 +565,30 @@ doublereal Sim1D::jacobian(int i, int j)
 void Sim1D::evalSSJacobian()
 {
     OneDim::evalSSJacobian(m_x.data(), m_xnew.data());
+}
+
+void Sim1D::solveAdjoint(const double* b, double* lambda)
+{
+    for (auto& D : m_dom) {
+        D->forceFullUpdate(true);
+    }
+    evalSSJacobian();
+    for (auto& D : m_dom) {
+        D->forceFullUpdate(false);
+    }
+
+    // Form J^T
+    size_t bw = bandwidth();
+    BandMatrix Jt(size(), bw, bw);
+    for (size_t i = 0; i < size(); i++) {
+        size_t j1 = (i > bw) ? i - bw : 0;
+        size_t j2 = (i + bw >= size()) ? size() - 1: i + bw;
+        for (size_t j = j1; j <= j2; j++) {
+            Jt(j,i) = m_jac->value(i,j);
+        }
+    }
+
+    Jt.solve(b, lambda);
 }
 
 void Sim1D::resize()

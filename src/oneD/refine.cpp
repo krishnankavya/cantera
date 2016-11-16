@@ -1,4 +1,8 @@
 //! @file refine.cpp
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/oneD/refine.h"
 #include "cantera/oneD/StFlow.h"
 
@@ -8,7 +12,7 @@ namespace Cantera
 {
 Refiner::Refiner(Domain1D& domain) :
     m_ratio(10.0), m_slope(0.8), m_curve(0.8), m_prune(-0.001),
-    m_min_range(0.01), m_domain(&domain), m_npmax(3000),
+    m_min_range(0.01), m_domain(&domain), m_npmax(1000),
     m_gridmin(1e-10)
 {
     m_nv = m_domain->nComponents();
@@ -43,8 +47,7 @@ int Refiner::analyze(size_t n, const doublereal* z,
                      const doublereal* x)
 {
     if (n >= m_npmax) {
-        writelog("max number of grid points reached ({}).\n", m_npmax);
-        return -2;
+        throw CanteraError("Refiner::analyze", "max number of grid points reached ({}).", m_npmax);
     }
 
     if (m_domain->nPoints() <= 1) {
@@ -62,7 +65,7 @@ int Refiner::analyze(size_t n, const doublereal* z,
 
     // check consistency
     if (n != m_domain->nPoints()) {
-        throw CanteraError("analyze","inconsistent");
+        throw CanteraError("Refiner::analyze", "inconsistent");
     }
 
     // find locations where cell size ratio is too large.

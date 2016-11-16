@@ -5,16 +5,16 @@
  *    thermodynamic properties (see \ref thermoprops and
  *    class \link Cantera::VPStandardStateTP VPStandardStateTP\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_VPSTANDARDSTATETP_H
 #define CT_VPSTANDARDSTATETP_H
 
 #include "ThermoPhase.h"
 #include "VPSSMgr.h"
+#include "PDSS.h"
 
 namespace Cantera
 {
@@ -55,7 +55,6 @@ public:
 
     VPStandardStateTP(const VPStandardStateTP& b);
     VPStandardStateTP& operator=(const VPStandardStateTP& b);
-    virtual ~VPStandardStateTP();
     virtual ThermoPhase* duplMyselfAsThermoPhase() const;
 
     //@}
@@ -301,14 +300,14 @@ protected:
     // -> suggest making this private!
     //! Pointer to the VPSS manager that calculates all of the standard state
     //! info efficiently.
-    mutable VPSSMgr* m_VPSS_ptr;
+    mutable std::unique_ptr<VPSSMgr> m_VPSS_ptr;
 
     //! Storage for the PDSS objects for the species
     /*!
      *  Storage is in species index order. VPStandardStateTp owns each of the
      *  objects. Copy operations are deep.
      */
-    std::vector<PDSS*> m_PDSS_storage;
+    std::vector<std::unique_ptr<PDSS>> m_PDSS_storage;
 };
 }
 

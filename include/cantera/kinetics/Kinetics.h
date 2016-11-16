@@ -5,7 +5,8 @@
  *  \link Cantera::Kinetics Kinetics\endlink).
  */
 
-// Copyright 2001-2004  California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_KINETICS_H
 #define CT_KINETICS_H
@@ -781,6 +782,8 @@ public:
      * Return the Reaction object for reaction *i*.
      */
     shared_ptr<Reaction> reaction(size_t i);
+    
+    shared_ptr<const Reaction> reaction(size_t i) const;
 
     //! Determine behavior when adding a new reaction that contains species not
     //! defined in any of the phases associated with this kinetics manager. If
@@ -986,10 +989,6 @@ protected:
 
     //! @see skipUndeclaredThirdBodies()
     bool m_skipUndeclaredThirdBodies;
-
-private:
-    std::map<size_t, std::vector<grouplist_t> > m_rgroups;
-    std::map<size_t, std::vector<grouplist_t> > m_pgroups;
 };
 
 }

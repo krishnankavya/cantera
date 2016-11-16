@@ -1,6 +1,7 @@
 //! @file ReactorNet.h
 
-// Copyright 2004  California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_REACTORNET_H
 #define CT_REACTORNET_H
@@ -23,7 +24,8 @@ class ReactorNet : public FuncEval
 {
 public:
     ReactorNet();
-    virtual ~ReactorNet();
+    virtual ~ReactorNet() {};
+    ReactorNet(const ReactorNet&) = delete;
 
     //! @name Methods to set up a simulation.
     //@{
@@ -104,6 +106,7 @@ public:
     //! reactor network.
     void setVerbose(bool v = true) {
         m_verbose = v;
+        suppressErrors(!m_verbose);
     }
 
     //! Return a reference to the integrator.
@@ -214,7 +217,7 @@ protected:
     void initialize();
 
     std::vector<Reactor*> m_reactors;
-    Integrator* m_integ;
+    std::unique_ptr<Integrator> m_integ;
     doublereal m_time;
     bool m_init;
     bool m_integrator_init; //!< True if integrator initialization is current

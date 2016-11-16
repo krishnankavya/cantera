@@ -1,5 +1,8 @@
 //! @file global.cpp
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/base/FactoryBase.h"
 #include "cantera/base/xml.h"
 #include "application.h"
@@ -132,6 +135,11 @@ void setError(const std::string& r, const std::string& msg)
 void addDirectory(const std::string& dir)
 {
     app()->addDataDirectory(dir);
+}
+
+std::string getDataDirectories(const std::string& sep)
+{
+    return app()->getDataDirectories(sep);
 }
 
 std::string findInputFile(const std::string& name)

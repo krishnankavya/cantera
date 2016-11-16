@@ -2,13 +2,16 @@
  * @file clib_utils.h
  */
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_CLIB_UTILS_H
 #define CT_CLIB_UTILS_H
 
 #include "cantera/base/global.h"
 #include "cantera/base/ctexceptions.h"
 #include "../base/application.h"
-#include "clib_defs.h"
+#include "cantera/clib/clib_defs.h"
 #include <iostream>
 
 namespace Cantera

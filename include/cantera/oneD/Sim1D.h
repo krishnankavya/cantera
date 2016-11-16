@@ -2,6 +2,9 @@
  * @file Sim1D.h
  */
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_SIM1D_H
 #define CT_SIM1D_H
 
@@ -109,12 +112,17 @@ public:
         return m_x.data();
     }
 
-    void setTimeStep(doublereal stepsize, size_t n, integer* tsteps);
+    void setTimeStep(double stepsize, size_t n, const int* tsteps);
 
     void solve(int loglevel = 0, bool refine_grid = true);
 
     void eval(doublereal rdt=-1.0, int count = 1) {
         OneDim::eval(npos, m_x.data(), m_xnew.data(), rdt, count);
+    }
+
+    // Evaluate the governing equations and return the vector of residuals
+    void getResidual(double rdt, double* resid) {
+        OneDim::eval(npos, m_x.data(), resid, rdt, 0);
     }
 
     /// Refine the grid in all domains.
@@ -130,7 +138,20 @@ public:
      */
     void setRefineCriteria(int dom = -1, doublereal ratio = 10.0,
                            doublereal slope = 0.8, doublereal curve = 0.8, doublereal prune = -0.1);
-    void setMaxGridPoints(int dom = -1, int npoints = 300);
+
+    /**
+     * Set the maximum number of grid points in the domain. If dom >= 0,
+     * then the settings apply only to the specified domain. If dom < 0,
+     * the settings are applied to each domain.  @see Refiner::setMaxPoints.
+     */
+    void setMaxGridPoints(int dom, int npoints);
+
+    /**
+     * Get the maximum number of grid points in this domain. @see Refiner::maxPoints
+     *
+     * @param dom domain number, beginning with 0 for the leftmost domain.
+     */
+    size_t maxGridPoints(size_t dom);
 
     //! Set the minimum grid spacing in the specified domain(s).
     /*!
@@ -166,6 +187,21 @@ public:
     doublereal jacobian(int i, int j);
 
     void evalSSJacobian();
+
+    //! Solve the equation \f$ J^T \lambda = b \f$.
+    /**
+     * Here, \f$ J = \partial f/\partial x \f$ is the Jacobian matrix of the
+     * system of equations \f$ f(x,p)=0 \f$. This can be used to efficiently
+     * solve for the sensitivities of a scalar objective function \f$ g(x,p) \f$
+     * to a vector of parameters \f$ p \f$ by solving:
+     * \f[ J^T \lambda = \left( \frac{\partial g}{\partial x} \right)^T \f]
+     * for \f$ \lambda \f$ and then computing:
+     * \f[
+     *     \left.\frac{dg}{dp}\right|_{f=0} = \frac{\partial g}{\partial p}
+     *         - \lambda^T \frac{\partial f}{\partial p}
+     * \f]
+     */
+    void solveAdjoint(const double* b, double* lambda);
 
     virtual void resize();
 

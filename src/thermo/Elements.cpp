@@ -3,7 +3,8 @@
  *  This file contains a database of atomic weights.
  */
 
-//  Copyright 2003  California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/Elements.h"
 #include "cantera/base/ctml.h"
@@ -172,8 +173,8 @@ double getElementWeight(const std::string& ename)
 {
     int numElements = numElementsDefined();
     int numIsotopes = numIsotopesDefined();
-    string symbol = stripws(ename);
-    string name = lowercase(stripws(ename));
+    string symbol = ba::trim_copy(ename);
+    string name = ba::to_lower_copy(symbol);
     for (int i = 0; i < numElements; i++) {
         if (symbol == atomicWeightTable[i].symbol) {
             return atomicWeightTable[i].atomicWeight;
@@ -204,7 +205,7 @@ string getElementSymbol(const std::string& ename)
 {
     int numElements = numElementsDefined();
     int numIsotopes = numIsotopesDefined();
-    string name = lowercase(stripws(ename));
+    string name = ba::to_lower_copy(ba::trim_copy(ename));
     for (int i = 0; i < numElements; i++) {
         if (name == atomicWeightTable[i].fullName) {
             return atomicWeightTable[i].symbol;
@@ -232,7 +233,7 @@ string getElementName(const std::string& ename)
 {
     int numElements = numElementsDefined();
     int numIsotopes = numIsotopesDefined();
-    string symbol = stripws(ename);
+    string symbol = ba::trim_copy(ename);
     for (int i = 0; i < numElements; i++) {
         if (symbol == atomicWeightTable[i].symbol) {
             return atomicWeightTable[i].fullName;
@@ -260,8 +261,8 @@ int getAtomicNumber(const std::string& ename)
 {
     int numElements = numElementsDefined();
     int numIsotopes = numIsotopesDefined();
-    string symbol = stripws(ename);
-    string name = lowercase(stripws(ename));
+    string symbol = ba::trim_copy(ename);
+    string name = ba::to_lower_copy(symbol);
     for (int i = 0; i < numElements; i++) {
         if (symbol == atomicWeightTable[i].symbol) {
             return i+1;

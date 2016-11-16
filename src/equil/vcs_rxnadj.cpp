@@ -2,11 +2,9 @@
  * @file vcs_rxnadj.cpp
  *  Routines for carrying out various adjustments to the reaction steps
  */
-/*
- * Copyright (2006) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/equil/vcs_solve.h"
 #include "cantera/equil/vcs_VolPhase.h"
@@ -381,7 +379,7 @@ int VCS_SOLVE::vcs_rxn_adj_cg()
                 // single species phases will disappear. The sign of DG(I) will
                 // indicate which way the reaction will go. Then, we need to
                 // follow the reaction to see which species will zero out first.
-                size_t k;
+                size_t k = npos;
                 double dss;
                 if (m_deltaGRxn_new[irxn] > 0.0) {
                     dss = m_molNumSpecies_old[kspec];

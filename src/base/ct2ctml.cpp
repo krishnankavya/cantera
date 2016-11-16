@@ -3,7 +3,9 @@
  * Driver for the system call to the python executable that converts
  * cti files to ctml files (see \ref inputfiles).
  */
-// Copyright 2001-2005  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/base/ctml.h"
 #include "cantera/base/stringUtils.h"
@@ -42,7 +44,7 @@ static string pypath()
     const char* py = getenv("PYTHON_CMD");
 
     if (py) {
-        string sp = stripws(string(py));
+        string sp = ba::trim_copy(string(py));
         if (sp.size() > 0) {
             s = sp;
         }
@@ -132,7 +134,7 @@ static std::string call_ctml_writer(const std::string& text, bool isfile)
         }
         python.close();
         python_exit_code = python.exit_code();
-        error_output = stripws(error_stream.str());
+        error_output = ba::trim_copy(error_stream.str());
         python_output = output_stream.str();
     } catch (std::exception& err) {
         // Report failure to execute Python
@@ -231,7 +233,7 @@ void ck2cti(const std::string& in_file, const std::string& thermo_file,
         }
         python.close();
         python_exit_code = python.exit_code();
-        python_output = stripws(output_stream.str());
+        python_output = ba::trim_copy(output_stream.str());
     } catch (std::exception& err) {
         // Report failure to execute Python
         stringstream message;

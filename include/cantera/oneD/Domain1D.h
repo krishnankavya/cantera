@@ -1,8 +1,7 @@
  //! @file Domain1D.h
 
-/*
- *  Copyright 2002 California Institute of Technology
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_DOMAIN1D_H
 #define CT_DOMAIN1D_H
@@ -511,7 +510,7 @@ public:
     const vector_fp& grid() const {
         return m_z;
     }
-    doublereal grid(size_t point) {
+    doublereal grid(size_t point) const {
         return m_z[point];
     }
 
@@ -539,6 +538,16 @@ public:
      * need to be set, then method _finalize does not need to be overloaded.
      */
     virtual void _finalize(const doublereal* x) {}
+
+    /**
+     * In some cases, for computational efficiency some properties (e.g.
+     * transport coefficients) may not be updated during Jacobian evaluations.
+     * Set this to `true` to force these properties to be udpated even while
+     * calculating Jacobian elements.
+     */
+    void forceFullUpdate(bool update) {
+        m_force_full_update = update;
+    }
 
 protected:
     doublereal m_rdt;
@@ -573,6 +582,7 @@ protected:
     vector_int m_td; //!< @deprecated To be removed after Cantera 2.3.
     std::vector<std::string> m_name;
     int m_bw;
+    bool m_force_full_update;
 };
 }
 

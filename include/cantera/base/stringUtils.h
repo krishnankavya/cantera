@@ -2,18 +2,23 @@
  *  @file stringUtils.h Contains declarations for string manipulation
  *       functions within Cantera.
  */
-// Copyright 2001  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_STRINGUTILS_H
 #define CT_STRINGUTILS_H
 
 #include "ct_defs.h"
 #include "cantera/base/fmt.h"
+#include <boost/algorithm/string.hpp>
 
 #include <string>
 
 namespace Cantera
 {
+
+namespace ba = boost::algorithm;
 
 //! Convert a double into a c++ string
 /*!
@@ -53,6 +58,7 @@ std::string vec2str(const vector_fp& v, const std::string& fmt="%g",
  *
  * @param   s       Input string
  * @returns a copy of the string, stripped of leading and trailing white space
+ * @deprecated Use `boost::algorithm::trim_copy` instead
  */
 std::string stripws(const std::string& s);
 
@@ -67,6 +73,8 @@ std::string stripnonprint(const std::string& s);
 /*!
  * @param s        Input string
  * @returns a copy of the string, with all characters lowercase.
+ * @deprecated Use boost::algorithm::to_lower_copy instead. To be removed after
+ *     Cantera 2.3.
  */
 std::string lowercase(const std::string& s);
 
@@ -157,6 +165,7 @@ std::string parseSpeciesName(const std::string& nameStr, std::string& phaseName)
 /*!
  * @param  s    Input string to be line wrapped
  * @param  len  Length at which to wrap. The default is 70.
+ * @deprecated Unused. To be removed after Cantera 2.3.
  */
 std::string wrapString(const std::string& s,
                        const int len=70);
@@ -188,7 +197,12 @@ void tokenizeString(const std::string& oval,
                     std::vector<std::string>& v);
 
 //! Copy the contents of a std::string into a char array of a given length
-void copyString(const std::string& source, char* dest, size_t length);
+/*!
+ *  If *length* is less than the size of *source*, the string will be truncated
+ *  and the function will return the length of the buffer required to hold
+ *  *source*. Otherwise, returns 0.
+ */
+size_t copyString(const std::string& source, char* dest, size_t length);
 
 }
 

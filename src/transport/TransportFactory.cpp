@@ -1,5 +1,8 @@
 //! @file TransportFactory.cpp Implementation file for class TransportFactory.
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 // known transport models
 #include "cantera/transport/MultiTransport.h"
 #include "cantera/transport/MixTransport.h"
@@ -112,7 +115,7 @@ std::string TransportFactory::modelName(int model)
 LTPspecies* TransportFactory::newLTP(const XML_Node& trNode, const std::string& name,
                                      TransportPropertyType tp_ind, thermo_t* thermo)
 {
-    std::string model = lowercase(trNode["model"]);
+    std::string model = ba::to_lower_copy(trNode["model"]);
     switch (m_LTRmodelMap[model]) {
     case LTP_TD_CONSTANT:
         return new LTPspecies_Const(trNode, name, tp_ind, thermo);

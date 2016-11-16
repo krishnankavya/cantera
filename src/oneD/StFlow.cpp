@@ -1,6 +1,7 @@
 //! @file StFlow.cpp
 
-// Copyright 2002  California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/oneD/StFlow.h"
 #include "cantera/base/ctml.h"
@@ -13,7 +14,7 @@ namespace Cantera
 {
 
 StFlow::StFlow(IdealGasPhase* ph, size_t nsp, size_t points) :
-    Domain1D(nsp+4, points),
+    Domain1D(nsp+c_offset_Y, points),
     m_press(-1.0),
     m_nsp(nsp),
     m_thermo(0),
@@ -38,7 +39,7 @@ StFlow::StFlow(IdealGasPhase* ph, size_t nsp, size_t points) :
     size_t nsp2 = m_thermo->nSpecies();
     if (nsp2 != m_nsp) {
         m_nsp = nsp2;
-        Domain1D::resize(m_nsp+4, points);
+        Domain1D::resize(m_nsp+c_offset_Y, points);
     }
 
     // make a local copy of the species molecular weight vector
@@ -70,7 +71,7 @@ StFlow::StFlow(IdealGasPhase* ph, size_t nsp, size_t points) :
 
     // mass fraction bounds
     for (size_t k = 0; k < m_nsp; k++) {
-        setBounds(4+k, -1.0e-7, 1.0e5);
+        setBounds(c_offset_Y+k, -1.0e-7, 1.0e5);
     }
 
     //-------------------- grid refinement -------------------------
@@ -88,10 +89,8 @@ StFlow::StFlow(IdealGasPhase* ph, size_t nsp, size_t points) :
 
     // Find indices for radiating species
     m_kRadiating.resize(2, npos);
-    size_t kr = m_thermo->speciesIndex("CO2");
-    m_kRadiating[0] = (kr != npos) ? kr : m_thermo->speciesIndex("co2");
-    kr = m_thermo->speciesIndex("H2O");
-    m_kRadiating[1] = (kr != npos) ? kr : m_thermo->speciesIndex("h2o");
+    m_kRadiating[0] = m_thermo->speciesIndex("CO2");
+    m_kRadiating[1] = m_thermo->speciesIndex("H2O");
 }
 
 void StFlow::resize(size_t ncomponents, size_t points)
@@ -142,7 +141,6 @@ void StFlow::resetBadValues(double* xg) {
     }
 }
 
-
 void StFlow::setTransport(Transport& trans, bool withSoret)
 {
     m_trans = &trans;
@@ -158,6 +156,23 @@ void StFlow::setTransport(Transport& trans, bool withSoret)
                            "Thermal diffusion (the Soret effect) "
                            "requires using a multicomponent transport model.");
     }
+
+    warn_deprecated("setTransport(Transport& trans, bool withSoret = false)",
+        "The withSoret argument is deprecated and unused. Use "
+        "the form of setTransport with signature setTransport(Transport& trans)."
+        "To be removed after Cantera 2.3.");
+}
+
+void StFlow::setTransport(Transport& trans)
+{
+    m_trans = &trans;
+    m_do_multicomponent = (m_trans->transportType() == "Multi");
+
+    m_diff.resize(m_nsp*m_points);
+    if (m_do_multicomponent) {
+        m_multidiff.resize(m_nsp*m_nsp*m_points);
+        m_dthermal.resize(m_nsp, m_points, 0.0);
+    } 
 }
 
 void StFlow::enableSoret(bool withSoret)
@@ -253,10 +268,12 @@ void StFlow::eval(size_t jg, doublereal* xg,
     // ------------ update properties ------------
 
     updateThermo(x, j0, j1);
-    if (jg == npos) {
-        // update transport properties only if a Jacobian is not being evaluated
+    if (jg == npos || m_force_full_update) {
+        // update transport properties only if a Jacobian is not being
+        // evaluated, or if specifically requested
         updateTransport(x, j0, j1);
-
+    }
+    if (jg == npos) {
         double* Yleft = x + index(c_offset_Y, jmin);
         m_kExcessLeft = distance(Yleft, max_element(Yleft, Yleft + m_nsp));
         double* Yright = x + index(c_offset_Y, jmax);
@@ -567,7 +584,7 @@ size_t StFlow::componentIndex(const std::string& name) const
     } else if (name=="lambda") {
         return 3;
     } else {
-        for (size_t n=4; n<m_nsp+4; n++) {
+        for (size_t n=c_offset_Y; n<m_nsp+c_offset_Y; n++) {
             if (componentName(n)==name) {
                 return n;
             }
@@ -671,7 +688,7 @@ void StFlow::restore(const XML_Node& dom, doublereal* soln, int loglevel)
                 size_t k = m_thermo->speciesIndex(nm);
                 did_species[k] = 1;
                 for (size_t j = 0; j < np; j++) {
-                    soln[index(k+4,j)] = x[j];
+                    soln[index(k+c_offset_Y,j)] = x[j];
                 }
             }
         } else {
@@ -767,7 +784,7 @@ XML_Node& StFlow::save(XML_Node& o, const doublereal* const sol)
     addFloatArray(gv,"L",x.size(),x.data(),"N/m^4");
 
     for (size_t k = 0; k < m_nsp; k++) {
-        soln.getRow(4+k, x.data());
+        soln.getRow(c_offset_Y+k, x.data());
         addFloatArray(gv,m_thermo->speciesName(k),
                       x.size(),x.data(),"","massFraction");
     }
@@ -873,7 +890,7 @@ void AxiStagnFlow::evalRightBoundary(doublereal* x, doublereal* rsd,
     doublereal sum = 0.0;
     for (size_t k = 0; k < m_nsp; k++) {
         sum += Y(x,k,j);
-        rsd[index(k+4,j)] = m_flux(k,j-1) + rho_u(x,j)*Y(x,k,j);
+        rsd[index(k+c_offset_Y,j)] = m_flux(k,j-1) + rho_u(x,j)*Y(x,k,j);
     }
     rsd[index(c_offset_Y + rightExcessSpecies(), j)] = 1.0 - sum;
     diag[index(c_offset_Y + rightExcessSpecies(), j)] = 0;
@@ -926,7 +943,7 @@ void FreeFlame::evalRightBoundary(doublereal* x, doublereal* rsd,
     diag[index(c_offset_L, j)] = 0;
     for (size_t k = 0; k < m_nsp; k++) {
         sum += Y(x,k,j);
-        rsd[index(k+4,j)] = m_flux(k,j-1) + rho_u(x,j)*Y(x,k,j);
+        rsd[index(k+c_offset_Y,j)] = m_flux(k,j-1) + rho_u(x,j)*Y(x,k,j);
     }
     rsd[index(c_offset_Y + rightExcessSpecies(), j)] = 1.0 - sum;
     diag[index(c_offset_Y + rightExcessSpecies(), j)] = 0;

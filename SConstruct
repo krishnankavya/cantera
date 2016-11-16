@@ -60,16 +60,19 @@ if 'clean' in COMMAND_LINE_TARGETS:
     removeDirectory('.sconf_temp')
     removeFile('.sconsign.dblite')
     removeFile('include/cantera/base/config.h')
+    removeFile('src/pch/system.h.gch')
     removeDirectory('include/cantera/ext')
     removeFile('interfaces/cython/cantera/_cantera.cpp')
+    removeFile('interfaces/cython/cantera/_cantera.h')
     removeFile('interfaces/cython/setup2.py')
     removeFile('interfaces/cython/setup3.py')
     removeFile('interfaces/python_minimal/setup.py')
     removeFile('config.log')
     removeDirectory('doc/sphinx/matlab/examples')
-    removeDirectory('doc/sphinx/matlab/tutorials')
+    removeFile('doc/sphinx/matlab/examples.rst')
     removeDirectory('doc/sphinx/matlab/code-docs')
     removeDirectory('doc/sphinx/cython/examples')
+    removeFile('doc/sphinx/cython/examples.rst')
     removeDirectory('interfaces/cython/Cantera.egg-info')
     removeDirectory('interfaces/python_minimal/Cantera_minimal_.egg-info')
     for name in os.listdir('interfaces/cython/cantera/data/'):
@@ -178,7 +181,7 @@ if os.name == 'nt':
 else:
     toolchain = ['default']
 
-env = Environment(tools=toolchain+['textfile', 'subst', 'recursiveInstall', 'wix'],
+env = Environment(tools=toolchain+['textfile', 'subst', 'recursiveInstall', 'wix', 'gch'],
                   ENV={'PATH': os.environ['PATH']},
                   toolchain=toolchain,
                   **extraEnvArgs)
@@ -243,6 +246,8 @@ defaults.noDebugCcFlags = ''
 defaults.debugLinkFlags = ''
 defaults.noDebugLinkFlags = ''
 defaults.warningFlags = '-Wall'
+defaults.buildPch = False
+env['pch_flags'] = []
 
 if 'gcc' in env.subst('$CC'):
     defaults.optimizeCcFlags += ' -Wno-inline'
@@ -251,6 +256,8 @@ if 'gcc' in env.subst('$CC'):
         defaults.cxxFlags = '-std=gnu++0x'
     else:
         defaults.cxxFlags = '-std=c++0x'
+    defaults.buildPch = True
+    env['pch_flags'] = ['-include', 'src/pch/system.h']
 
 elif env['CC'] == 'cl': # Visual Studio
     defaults.cxxFlags = ['/EHsc']
@@ -261,6 +268,8 @@ elif env['CC'] == 'cl': # Visual Studio
     defaults.optimizeCcFlags = '/O2'
     defaults.debugLinkFlags = '/DEBUG'
     defaults.warningFlags = '/W3'
+    defaults.buildPch = True
+    env['pch_flags'] = ['/FIpch/system.h']
 
 elif 'icc' in env.subst('$CC'):
     defaults.cxxFlags = '-std=c++0x'
@@ -270,6 +279,8 @@ elif 'icc' in env.subst('$CC'):
 elif 'clang' in env.subst('$CC'):
     defaults.ccFlags = '-fcolor-diagnostics'
     defaults.cxxFlags = '-std=c++11'
+    defaults.buildPch = True
+    env['pch_flags'] = ['-include-pch', 'src/pch/system.h.gch']
 
 else:
     print "WARNING: Unrecognized C compiler '%s'" % env['CC']
@@ -293,18 +304,11 @@ for key,value in defaults.__dict__.items():
 # *** Read user-configurable options ***
 # **************************************
 
-# This check prevents requiring root permissions to build when the
-# installation directory is not writable by the current user.
-if 'install' in COMMAND_LINE_TARGETS:
-    installPathTest = PathVariable.PathIsDirCreate
-else:
-    installPathTest = PathVariable.PathAccept
-
 config_options = [
     PathVariable(
         'prefix',
         'Set this to the directory where Cantera should be installed.',
-        defaults.prefix, installPathTest),
+        defaults.prefix, PathVariable.PathAccept),
     EnumVariable(
         'python_package',
         """If you plan to work in Python, or you want to use the graphical
@@ -350,7 +354,7 @@ config_options = [
     PathVariable(
         'python3_array_home',
         """"If numpy was installed to a custom location (e.g. using the --home
-            option, set this to the directory for numpy.""",
+            option), set this to the directory for numpy.""",
         '', PathVariable.PathAccept),
     PathVariable(
         'python3_prefix',
@@ -411,8 +415,12 @@ config_options = [
         'sphinx-build', PathVariable.PathAccept),
     EnumVariable(
         'system_eigen',
-        """Select whether to use Eigen from a system installation ('y'), from
-           a git submodule ('n'), or to decide automatically ('default').""",
+        """Select whether to use Eigen from a system installation ('y'), from a
+           git submodule ('n'), or to decide automatically ('default'). If Eigen
+           is not installed directly into a system include directory, e.g. it is
+           installed in '/usr/include/eigen3/Eigen', then you will need to add
+           '/usr/include/eigen3' to 'extra_inc_dirs'.
+           """,
         'default', ('default', 'y', 'n')),
     EnumVariable(
         'system_fmt',
@@ -471,6 +479,9 @@ config_options = [
         string "all" or a comma separated list of variable names, e.g.
         'LD_LIBRARY_PATH,HOME'.""",
      defaults.env_vars),
+    BoolVariable(
+        'use_pch', """Use a precompiled-header to speed up compilation""",
+        defaults.buildPch),
     ('cxx_flags',
      """Compiler flags passed to the C++ compiler only. Separate multiple
         options with spaces, e.g. cxx_flags='-g -Wextra -O3 --std=c++11'""",
@@ -836,6 +847,10 @@ env['HAS_LIBCPP'] = conf.CheckDeclaration('_LIBCPP_VERSION', '#include <iostream
 boost_version_source = get_expression_value(['<boost/version.hpp>'], 'BOOST_LIB_VERSION')
 retcode, boost_lib_version = conf.TryRun(boost_version_source, '.cpp')
 env['BOOST_LIB_VERSION'] = boost_lib_version.strip()
+print 'INFO: Found Boost version {0!r}'.format(env['BOOST_LIB_VERSION'])
+if not env['BOOST_LIB_VERSION']:
+    config_error("Boost could not be found. Install Boost headers or set"
+                 " 'boost_inc_dir' to point to the boost headers.")
 
 import SCons.Conftest, SCons.SConf
 context = SCons.SConf.CheckContext(conf)
@@ -892,7 +907,7 @@ if env['system_sundials'] == 'y':
 
     # Ignore the minor version, e.g. 2.4.x -> 2.4
     env['sundials_version'] = '.'.join(sundials_version.split('.')[:2])
-    if env['sundials_version'] not in ('2.4','2.5','2.6'):
+    if env['sundials_version'] not in ('2.4','2.5','2.6','2.7'):
         print """ERROR: Sundials version %r is not supported.""" % env['sundials_version']
         sys.exit(1)
     print """INFO: Using system installation of Sundials version %s.""" % sundials_version
@@ -989,7 +1004,7 @@ if env['VERBOSE']:
 env['python_cmd_esc'] = quoted(env['python_cmd'])
 
 # Python 2 Package Settings
-cython_min_version = LooseVersion('0.19')
+cython_min_version = LooseVersion('0.23')
 env['install_python2_action'] = ''
 if env['python_package'] == 'new':
     env['python_package'] = 'full' # Allow 'new' as a synonym for 'full'
@@ -1022,37 +1037,42 @@ if env['python_package'] in ('full','default'):
             print ("WARNING: " + message)
 
     # Test to see if we can import the specified array module
+    script = '\n'.join(("from distutils.sysconfig import *",
+                        "import site",
+                        "import numpy",
+                        "print get_python_version()",
+                        "try:",
+                        "    print site.getusersitepackages()",
+                        "except AttributeError:",
+                        "    print site.USER_SITE"))
+
     if env['python_array_home']:
-        sys.path.append(env['python_array_home'])
-    try:
-        import numpy as np
-        try:
-            env['python_array_include'] = np.get_include()
-        except AttributeError:
-            print """WARNING: Couldn't find include directory for NumPy."""
-            env['python_array_include'] = ''
+        script = "sys.path.append({})\n".format(env['python_array_home']) + script
 
-    except ImportError:
-        if env['python_package'] == 'full':
-            print """ERROR: Couldn't find include directory for NumPy."""
-            sys.exit(1)
-        else:
-            print ("""WARNING: Not building the Python package """
-                   """ because NumPy could not be found.""")
-            warnNoPython = True
+    try:
+        info = getCommandOutput(env['python_cmd'], '-c', script)
+        (env['python_version'], env['python_usersitepackages']) = info.splitlines()[-2:]
+    except OSError as err:
+        if env['VERBOSE']:
+            print 'Error checking for Python 2:'
+            print err
+        info = False
+
+    if not info:
+        if env['python_package'] == 'default':
+            print ('WARNING: Not building the full Python 2 package because the Python '
+                   '2 interpreter %r could not be found or a required dependency '
+                   '(e.g. numpy) was not found.' % env['python_cmd'])
             env['python_package'] = 'minimal'
-
-    if warnNoPython:
-        env['python_package'] = 'minimal'
+            warnNoPython = True
+        else:
+            print ('ERROR: Could not execute the Python 2 interpreter %r or a required '
+                   'dependency (e.g. numpy) could not be found.' %
+                   env['python_cmd'])
+            sys.exit(1)
     else:
+        print 'INFO: Building the full Python package for Python {0}'.format(env['python_version'])
         env['python_package'] = 'full'
-        print """INFO: Building the full Python 2 package."""
-
-    try:
-        import site
-        env['python_usersitepackages'] = site.getusersitepackages()
-    except AttributeError: # getusersitepackages is only in Python 2.7+
-        env['python_usersitepackages'] = '<user site-packages directory>'
 
     # Check for 3to2. See http://pypi.python.org/pypi/3to2
     if env['python_package'] == 'full':
@@ -1062,8 +1082,11 @@ if env['python_package'] in ('full','default'):
                 threetotwo_cmd = pjoin(python_dir, 'Scripts', '3to2')
                 ret = getCommandOutput(env['python_cmd'], threetotwo_cmd, '-l')
             else:
-                ret = getCommandOutput('3to2', '-l')
-        except OSError:
+                ret = getCommandOutput('3to2' '-l')
+        except OSError as err:
+            if env['VERBOSE']:
+                print 'Error checking for 3to2:'
+                print err
             ret = ''
         if 'print' in ret:
             env['python_convert_examples'] = True
@@ -1072,7 +1095,6 @@ if env['python_package'] in ('full','default'):
             print """WARNING: Couldn't find '3to2'. Python examples will not work correctly."""
 
 else:
-    env['python_array_include'] = ''
     env['python_module_loc'] = ''
 
 # Python 3 Package Settings
@@ -1086,12 +1108,16 @@ if env['python3_package'] in ('y', 'default'):
     try:
         script = '\n'.join(("from distutils.sysconfig import *",
                             "import site",
-			    "import numpy",
+	                        "import numpy",
                             "print(get_python_version())",
                             "try:",
                             "    print(site.getusersitepackages())",
                             "except AttributeError:",
                             "    print(site.USER_SITE)"))
+
+        if env['python3_array_home']:
+            script = "sys.path.append({})\n".format(env['python3_array_home']) + script
+
         info = getCommandOutput(env['python3_cmd'], '-c', script)
         (env['python3_version'],
          env['python3_usersitepackages']) = info.splitlines()[-2:]
@@ -1108,7 +1134,8 @@ if env['python3_package'] in ('y', 'default'):
                    '(e.g. numpy) was not found.' % env['python3_cmd'])
             env['python3_package'] = 'n'
         else:
-            print ('ERROR: Could not execute the Python 3 interpreter %r.' %
+            print ('ERROR: Could not execute the Python 3 interpreter %r or a '
+                   'required dependency (e.g. numpy) could not be found.' %
                    env['python3_cmd'])
             sys.exit(1)
     else:
@@ -1285,13 +1312,18 @@ cdefine('LAPACK_FTN_TRAILING_UNDERSCORE', 'lapack_ftn_trailing_underscore')
 cdefine('FTN_TRAILING_UNDERSCORE', 'lapack_ftn_trailing_underscore')
 cdefine('LAPACK_NAMES_LOWERCASE', 'lapack_names', 'lower')
 cdefine('CT_USE_LAPACK', 'use_lapack')
-cdefine('CT_USE_SYSTEM_EIGEN', env['system_eigen'])
+cdefine('CT_USE_SYSTEM_EIGEN', 'system_eigen')
 cdefine('CT_USE_SYSTEM_FMT', 'system_fmt')
 
-config_h = env.Command('include/cantera/base/config.h',
-                       'include/cantera/base/config.h.in',
+config_h_build = env.Command('build/src/config.h.build',
+                             'include/cantera/base/config.h.in',
                        ConfigBuilder(configh))
-env.AlwaysBuild(config_h)
+# This separate copy operation, which SCons will skip of config.h.build is
+# unmodified, prevents unnecessary rebuilds of the precompiled header
+config_h = env.Command('include/cantera/base/config.h',
+                       'build/src/config.h.build',
+                       Copy('$TARGET', '$SOURCE'))
+env.AlwaysBuild(config_h_build)
 env['config_h_target'] = config_h
 
 # *********************

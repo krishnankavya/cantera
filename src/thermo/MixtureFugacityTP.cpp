@@ -4,11 +4,9 @@
  *    non-ideal mixtures based on the fugacity models (see \ref thermoprops and
  *    class \link Cantera::MixtureFugacityTP MixtureFugacityTP\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/MixtureFugacityTP.h"
 #include "cantera/base/stringUtils.h"
@@ -546,20 +544,6 @@ doublereal MixtureFugacityTP::densityCalc(doublereal TKelvin, doublereal presPa,
 
 void MixtureFugacityTP::updateMixingExpressions()
 {
-}
-
-MixtureFugacityTP::spinodalFunc::spinodalFunc(MixtureFugacityTP* tp) :
-    m_tp(tp)
-{
-}
-
-int MixtureFugacityTP::spinodalFunc::evalSS(const doublereal t, const doublereal* const y,
-        doublereal* const r)
-{
-    doublereal molarVol = y[0];
-    doublereal pp;
-    r[0] = m_tp->dpdVCalc(m_tp->temperature(), molarVol, pp);
-    return 0;
 }
 
 int MixtureFugacityTP::corr0(doublereal TKelvin, doublereal pres, doublereal& densLiqGuess,

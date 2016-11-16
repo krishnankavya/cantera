@@ -3,6 +3,7 @@ from buildutils import *
 Import('env', 'build', 'install', 'libraryTargets')
 
 def defaultSetup(env, subdir, extensions):
+    env.Append(CCFLAGS=env['pch_flags'])
     return mglob(env, subdir, *extensions)
 
 def baseSetup(env, subdir, extensions):
@@ -23,18 +24,41 @@ libs = [('base', ['cpp'], baseSetup),
         ('clib', ['cpp'], defaultSetup),
         ]
 
+localenv = env.Clone()
+localenv.Prepend(CPPPATH=[Dir('#include'), Dir('#include/cantera/ext'), Dir('.')])
+localenv.Append(CCFLAGS=env['warning_flags'])
+
+if env['CC'] == 'cl' and env['debug']:
+    env['use_pch'] = False # PCH doesn't work with per-file PDB
+
+if env['use_pch']:
+    if env['CC'] == 'cl':
+        env.Command('#build/src/pch/system.h', '#src/pch/system.h',
+                    Copy('$TARGET', '$SOURCE'))
+        localenv['PCH'], pchobj = localenv.PCH('pch/system.cpp')
+        pch = localenv['PCH']
+        libraryTargets.append(pchobj)
+        localenv['PCHSTOP'] = 'pch/system.h'
+    else:
+        localenv['precompiled_header'] = File('pch/system.h')
+        pch = localenv.GchSh('#src/pch/system.h.gch',
+                             localenv['precompiled_header'])
+else:
+    removeFile('src/pch/system.h.gch')
+    localenv['pch_flags'] = []
+    pch = None
+
 for subdir, extensions, setup in libs:
-    localenv = env.Clone()
-    localenv.Prepend(CPPPATH=[Dir('#include'), Dir('#include/cantera/ext')])
-    localenv.Append(CCFLAGS=env['warning_flags'])
-    source = setup(localenv, subdir, extensions)
-    objects = localenv.SharedObject(source)
-    localenv.Depends(objects, localenv['config_h_target'])
+    env2 = localenv.Clone()
+    source = setup(env2, subdir, extensions)
+    objects = env2.SharedObject(source)
+    env2.Depends(objects, env2['config_h_target'])
+    if pch:
+        env2.Requires(objects, pch)
     libraryTargets.extend(objects)
 
 
 # build the Cantera static library
-localenv = env.Clone()
 lib = build(localenv.StaticLibrary('../lib/cantera', libraryTargets,
                                    SPAWN=getSpawn(localenv)))
 localenv.Depends(lib, localenv['config_h_target'])

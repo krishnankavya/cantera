@@ -1,11 +1,7 @@
 //! @file: RootFind.cpp  root finder for 1D problems
 
-/*
- * Copyright 2004 Sandia Corporation. Under the terms of Contract
- * DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
- * retains certain rights in this software.
- * See file License.txt for licensing information.
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/numerics/RootFind.h"
 #include "cantera/base/utilities.h"
@@ -56,6 +52,8 @@ RootFind::RootFind(ResidEval* resid) :
     x_minTried_(1.0E300),
     fx_minTried_(0.0)
 {
+    warn_deprecated("Unused. To be removed after Cantera 2.3. See "
+                    "boost::math::tools::toms748_solve for an alternative.");
 }
 
 RootFind::RootFind(const RootFind& r) :
@@ -176,7 +174,7 @@ int RootFind::solve(doublereal xmin, doublereal xmax, int itmax, doublereal& fun
     int topBump = 0;
     FILE* fp = 0;
     int doFinalFuncCall = 0;
-    doublereal x1, x2, xnew, f1, f2, fnew, slope;
+    doublereal x1, x2, xnew, f1, f2, fnew, slope = 0;
     doublereal deltaX2 = 0.0, deltaXnew = 0.0;
     int posStraddle = 0;
     int retn = ROOTFIND_FAILEDCONVERGENCE;

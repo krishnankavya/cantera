@@ -5,7 +5,8 @@
  *    (see class \ref numerics and \link Cantera::BandMatrix BandMatrix\endlink).
  */
 
-// Copyright 2001  California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_BANDMATRIX_H
 #define CT_BANDMATRIX_H
@@ -130,6 +131,7 @@ public:
      *         istruct[0] = kl
      *         istruct[1] = ku
      * @returns the number of rows and columns in the matrix.
+     * @deprecated Unused. To be removed after Cantera 2.3.
      */
     virtual size_t nRowsAndStruct(size_t* const iStruct = 0) const;
 
@@ -278,6 +280,9 @@ public:
      */
     virtual size_t checkColumns(doublereal& valueSmall) const;
 
+    //! LAPACK "info" flag after last factor/solve operation
+    int info() const { return m_info; };
+
 protected:
     //! Matrix data
     vector_fp data;
@@ -309,6 +314,8 @@ protected:
 
     //! Extra dp work array needed - size = 3n
     vector_fp work_;
+
+    int m_info;
 };
 
 //! Utility routine to print out the matrix

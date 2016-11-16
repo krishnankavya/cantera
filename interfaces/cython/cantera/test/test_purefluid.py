@@ -64,11 +64,11 @@ class TestPureFluid(utilities.CanteraTest):
         self.assertNear(self.water.X, 0.8)
 
         self.water.TP = 650, 101325
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.water.X = 0.1
 
         self.water.TP = 300, 101325
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             self.water.X = 0.3
 
     def test_set_minmax(self):
@@ -104,6 +104,40 @@ class TestPureFluid(utilities.CanteraTest):
     def test_properties_near_max(self):
         self.check_fd_properties(self.water.max_temp*(1-1e-5), 101325,
                                  self.water.max_temp*(1-1e-4), 101325, 1e-2)
+
+    def test_properties_near_sat1(self):
+        for T in [340,390,420]:
+            self.water.TX = T, 0.0
+            P = self.water.P
+            self.check_fd_properties(T, P+0.01, T, P+0.5, 1e-4)
+
+    def test_properties_near_sat2(self):
+        for T in [340,390,420]:
+            self.water.TX = T, 0.0
+            P = self.water.P
+            self.check_fd_properties(T, P-0.01, T, P-0.5, 1e-4)
+
+    def test_isothermal_compressibility_lowP(self):
+        # Low-pressure limit corresponds to ideal gas
+        ref = ct.Solution('gri30.xml')
+        ref.TPX = 450, 12, 'H2O:1.0'
+        self.water.TP = 450, 12
+        self.assertNear(ref.isothermal_compressibility,
+                        self.water.isothermal_compressibility, 1e-5)
+
+    def test_thermal_expansion_coeff_lowP(self):
+        # Low-pressure limit corresponds to ideal gas
+        ref = ct.Solution('gri30.xml')
+        ref.TPX = 450, 12, 'H2O:1.0'
+        self.water.TP = 450, 12
+        self.assertNear(ref.thermal_expansion_coeff,
+                        self.water.thermal_expansion_coeff, 1e-5)
+
+    def test_fd_properties_twophase(self):
+        self.water.TX = 400, 0.1
+        self.assertEqual(self.water.cp, np.inf)
+        self.assertEqual(self.water.isothermal_compressibility, np.inf)
+        self.assertEqual(self.water.thermal_expansion_coeff, np.inf)
 
     def test_TPX(self):
         self.water.TX = 400, 0.8

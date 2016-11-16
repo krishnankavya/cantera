@@ -1,8 +1,8 @@
-from .utilities import unittest
 import numpy as np
 
 import cantera as ct
 from . import utilities
+
 
 class TestTransport(utilities.CanteraTest):
     def setUp(self):
@@ -33,8 +33,8 @@ class TestTransport(utilities.CanteraTest):
         self.assertArrayNear(Dbin1, Dbin1.T)
 
     def test_multiComponent(self):
-        with self.assertRaises(Exception):
-            self.phase.Multi_diff_coeffs
+        with self.assertRaises(ct.CanteraError):
+            self.phase.multi_diff_coeffs
 
         self.assertArrayNear(self.phase.thermal_diff_coeffs,
                              np.zeros(self.phase.n_species))
@@ -132,7 +132,7 @@ species(name="H2O",
                {'H':'atom', 'H2':'nonlinear', 'H2O':'nonlinear'},
                {'H':'atom', 'H2':'linear', 'H2O':'atom'}]
         for geoms in bad:
-            with self.assertRaises(RuntimeError):
+            with self.assertRaises(ct.CanteraError):
                 ct.Solution(source=self.phase_data.format(**geoms))
 
 
@@ -181,6 +181,7 @@ class TestDustyGas(utilities.CanteraTest):
 class TestTransportData(utilities.CanteraTest):
     @classmethod
     def setUpClass(cls):
+        utilities.CanteraTest.setUpClass()
         cls.gas = ct.Solution('h2o2.xml')
         cls.gas.X = 'H2O:0.6, H2:0.4'
 

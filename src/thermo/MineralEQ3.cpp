@@ -5,13 +5,9 @@
  * class \link Cantera::MineralEQ3 MineralEQ3\endlink)
  */
 
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- *
- * Copyright 2001 California Institute of Technology
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/base/ctml.h"
 #include "cantera/thermo/mix_defs.h"
 #include "cantera/thermo/MineralEQ3.h"
@@ -257,15 +253,15 @@ void MineralEQ3::convertDGFormation()
         }
     }
     // Ok, now do the calculation. Convert to joules kmol-1
-    doublereal dg = m_deltaG_formation_pr_tr * 4.184 * 1.0E3;
+    doublereal dg = m_deltaG_formation_pr_tr * toSI("cal/gmol");
     //! Store the result into an internal variable.
     m_Mu0_pr_tr = dg + totalSum;
 
-    double Hcalc = m_Mu0_pr_tr + 298.15 * m_Entrop_pr_tr * 4184.0;
-    double DHjmol = m_deltaH_formation_pr_tr * 4184.0;
+    double Hcalc = m_Mu0_pr_tr + 298.15 * m_Entrop_pr_tr * toSI("cal/gmol");
+    double DHjmol = m_deltaH_formation_pr_tr * toSI("kal/gmol");
 
     // If the discrepancy is greater than 100 cal gmol-1, print an error
-    if (fabs(Hcalc -DHjmol) > 10.* 1.0E6 * 4.184) {
+    if (fabs(Hcalc -DHjmol) > 100 * toSI("cal/gmol")) {
         throw CanteraError("installMinEQ3asShomateThermoFromXML()",
                            "DHjmol is not consistent with G and S: {} vs {}",
                            Hcalc, DHjmol);

@@ -3,6 +3,10 @@
  * The Substance class
  * D. Goodwin, Caltech Nov. 1996
  */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/tpx/Sub.h"
 #include "cantera/base/stringUtils.h"
 #include "cantera/base/global.h"
@@ -30,12 +34,166 @@ Substance::Substance() :
 {
 }
 
+void Substance::setStdState(double h0, double s0, double t0, double p0)
+{
+    Set(PropertyPair::TP, t0, p0);
+    double hh = h();
+    double ss = s();
+    double hoff = h0 - hh;
+    double soff = s0 - ss;
+    m_entropy_offset += soff;
+    m_energy_offset += hoff;
+}
+
 double Substance::P()
 {
     return TwoPhase() ? Ps() : Pp();
 }
 
 const double DeltaT = 0.000001;
+
+double Substance::cv()
+{
+    double Tsave = T, dt = 1.e-4*T;
+    double x0 = x();
+    double T1 = std::max(Tmin(), Tsave - dt);
+    double T2 = std::min(Tmax(), Tsave + dt);
+
+    set_T(T1);
+    double x1 = x();
+    if ((x0 == 1.0 || x0 == 0.0) && x1 != x0) {
+        // If the initial state was pure liquid or pure vapor, and the state at
+        // T-dT is not, just take a one-sided difference
+        T1 = Tsave;
+        set_T(T1);
+    }
+    double s1 = s();
+
+    set_T(T2);
+    double x2 = x();
+    if ((x0 == 1.0 || x0 == 0.0) && x2 != x0) {
+        // If the initial state was pure liquid or pure vapor, and the state at
+        // T+dT is not, just take a one-sided difference
+        T2 = Tsave;
+        set_T(T2);
+    }
+    double s2 = s();
+
+    set_T(Tsave);
+    return T*(s2 - s1)/(T2-T1);
+}
+
+double Substance::cp()
+{
+    double Tsave = T, dt = 1.e-4*T;
+    double T1 = std::max(Tmin(), Tsave - dt);
+    double T2 = std::min(Tmax(), Tsave + dt);
+    double p0 = P();
+    double x0 = x();
+    if (TwoPhase()) {
+        // In the two-phase region, cp is infinite
+        return std::numeric_limits<double>::infinity();
+    }
+
+    Set(PropertyPair::TP, T1, p0);
+    double x1 = x();
+    if (x1 != x0) {
+        // If the initial state was pure liquid or pure vapor, and the state at
+        // T-dT is not, just take a one-sided difference
+        T1 = Tsave;
+        Set(PropertyPair::TP, T1, p0);
+    }
+    double s1 = s();
+
+    Set(PropertyPair::TP, T2, p0);
+    double x2 = x();
+    if (x2 != x0) {
+        // If the initial state was pure liquid or pure vapor, and the state at
+        // T+dT is not, just take a one-sided difference
+        T2 = Tsave;
+        Set(PropertyPair::TP, T2, p0);
+    }
+    double s2 = s();
+
+    Set(PropertyPair::TP, Tsave, p0);
+    return T*(s2 - s1)/(T2-T1);
+}
+
+double Substance::thermalExpansionCoeff()
+{
+    double Tsave = T, dt = 1.e-4*T;
+    double T1 = std::max(Tmin(), Tsave - dt);
+    double T2 = std::min(Tmax(), Tsave + dt);
+    double p0 = P();
+    double x0 = x();
+
+    if (TwoPhase()) {
+        // In the two-phase region, the thermal expansion coefficient is
+        // infinite
+        return std::numeric_limits<double>::infinity();
+    }
+
+    Set(PropertyPair::TP, T1, p0);
+    double x1 = x();
+    if (x1 != x0) {
+        // If the initial state was pure liquid or pure vapor, and the state at
+        // T-dT is not, just take a one-sided difference
+        T1 = Tsave;
+        Set(PropertyPair::TP, T1, p0);
+    }
+    double v1 = v();
+
+    Set(PropertyPair::TP, T2, p0);
+    double x2 = x();
+    if (x2 != x0) {
+        // If the initial state was pure liquid or pure vapor, and the state at
+        // T+dT is not, just take a one-sided difference
+        T2 = Tsave;
+        Set(PropertyPair::TP, T2, p0);
+    }
+    double v2 = v();
+
+    Set(PropertyPair::TP, Tsave, p0);
+    return 2.0*(v2 - v1)/((v2 + v1)*(T2-T1));
+}
+
+double Substance::isothermalCompressibility()
+{
+    double Psave = P(), dp = 1.e-4*Psave;
+    double x0 = x();
+
+    if (TwoPhase()) {
+        // In the two-phase region, the isothermal compressibility is infinite
+        return std::numeric_limits<double>::infinity();
+    }
+
+    double v0 = v();
+    double P1 = Psave - dp;
+    double P2 = Psave + dp;
+
+    Set(PropertyPair::TP, T, P1);
+    double x1 = x();
+    if (x1 != x0) {
+        // If the initial state was pure liquid or pure vapor, and the state at
+        // P-dP is not, just take a one-sided difference
+        P1 = Psave;
+        Set(PropertyPair::TP, T, P1);
+    }
+    double v1 = v();
+
+    Set(PropertyPair::TP, T, P2);
+    double x2 = x();
+    if (x2 != x0) {
+        // If the initial state was pure liquid or pure vapor, and the state at
+        // P+dP is not, just take a one-sided difference
+        P2 = Psave;
+        Set(PropertyPair::TP, T, P2);
+    }
+    double v2 = v();
+
+    Set(PropertyPair::TP, T, Psave);
+    return -(v2 - v1)/(v0*(P2-P1));
+}
 
 double Substance::dPsdT()
 {

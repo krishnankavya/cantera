@@ -1,6 +1,7 @@
 //! @file StFlow.h
 
-// Copyright 2001  California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_STFLOW_H
 #define CT_STFLOW_H
@@ -74,7 +75,16 @@ public:
     }
 
     //! set the transport manager
-    void setTransport(Transport& trans, bool withSoret = false);
+    void setTransport(Transport& trans);
+
+    //! set the transport manager
+    /*!
+     * @deprecated The withSoret argument is deprecated and unused.
+     *     Use the form of setTransport with signature setTransport(Transport& trans).
+     *     To be removed after Cantera 2.3.
+     */
+    void setTransport(Transport& trans, bool withSoret);
+
     void enableSoret(bool withSoret);
     bool withSoret() const {
         return m_do_soret;

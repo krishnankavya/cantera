@@ -3,7 +3,9 @@
  *     Definitions for the factory class that can create known ThermoPhase objects
  *     (see \ref thermoprops and class \link Cantera::ThermoFactory ThermoFactory\endlink).
  */
-// Copyright 2001  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/ThermoFactory.h"
 
@@ -364,7 +366,6 @@ void importPhase(XML_Node& phase, ThermoPhase* th)
     if (ssConvention == cSS_CONVENTION_VPSS) {
         VPSSMgr* vp_spth = newVPSSMgr(vpss_ptr, &phase, spDataNodeList);
         vpss_ptr->setVPSSMgr(vp_spth);
-        th->setSpeciesThermo(vp_spth->SpeciesThermoMgr());
     }
 
     size_t nsp = spDataNodeList.size();

@@ -10,11 +10,10 @@
  * further based upon expressions for the excess Gibbs free energy expressed as
  * a function of the mole fractions.
  */
-/*
- * Copyright (2009) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/thermo/IonsFromNeutralVPSSTP.h"
 #include "cantera/thermo/ThermoFactory.h"
 #include "cantera/thermo/PDSS_IonsFromNeutral.h"
@@ -640,10 +639,10 @@ void IonsFromNeutralVPSSTP::initThermoXML(XML_Node& phaseNode, const std::string
     XML_Node& thermoNode = phaseNode.child("thermo");
 
     // Make sure that the thermo model is IonsFromNeutralMolecule
-    string formString = lowercase(thermoNode.attrib("model"));
-    if (formString != "ionsfromneutralmolecule") {
+    if (!ba::iequals(thermoNode["model"], "ionsfromneutralmolecule")) {
         throw CanteraError("IonsFromNeutralVPSSTP::initThermoXML",
-                           "model name isn't IonsFromNeutralMolecule: " + formString);
+                           "model name isn't IonsFromNeutralMolecule: "
+                           + thermoNode["model"]);
     }
 
     // Find the Neutral Molecule Phase

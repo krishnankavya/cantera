@@ -4,11 +4,10 @@
  *  that eases the construction of single species phases
  *  ( see \ref thermoprops and class \link Cantera::SingleSpeciesTP SingleSpeciesTP\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #ifndef CT_SINGLESPECIESTP_H
 #define CT_SINGLESPECIESTP_H
 
@@ -246,14 +245,10 @@ public:
     //! Mole fractions are fixed, with x[0] = 1.0.
     virtual void setMoleFractions(const doublereal* const x) {};
 
-    virtual void setState_HP(doublereal h, doublereal p,
-                             doublereal tol = 1.e-8);
-    virtual void setState_UV(doublereal u, doublereal v,
-                             doublereal tol = 1.e-8);
-    virtual void setState_SP(doublereal s, doublereal p,
-                             doublereal tol = 1.e-8);
-    virtual void setState_SV(doublereal s, doublereal v,
-                             doublereal tol = 1.e-8);
+    virtual void setState_HP(double h, double p, double tol=1e-9);
+    virtual void setState_UV(double u, double v, double tol=1e-9);
+    virtual void setState_SP(double s, double p, double tol=1e-9);
+    virtual void setState_SV(double s, double v, double tol=1e-9);
     //@}
 
     virtual bool addSpecies(shared_ptr<Species> spec);

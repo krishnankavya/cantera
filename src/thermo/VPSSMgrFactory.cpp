@@ -5,11 +5,9 @@
  *    (see \ref spthermo and class
  *    \link Cantera::VPSSMgrFactory VPSSMgrFactory\endlink);
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "VPSSMgrFactory.h"
 #include "cantera/thermo/VPStandardStateTP.h"
@@ -214,7 +212,7 @@ VPSSMgrFactory::VPSSMgr_StringConversion(const std::string& ssModel) const
 {
     warn_deprecated("VPSSMgrFactory::VPSSMgr_StringConversion",
         "To be removed after Cantera 2.3.");
-    std::string lssModel = lowercase(ssModel);
+    std::string lssModel = ba::to_lower_copy(ssModel);
     VPSSMgr_enumType type;
     if (lssModel == "idealgas") {
         type = cVPSSMGR_IDEALGAS;
@@ -251,13 +249,12 @@ VPSSMgr* VPSSMgrFactory::newVPSSMgr(VPStandardStateTP* vp_ptr,
         }
         if (thermoNode.hasChild("variablePressureStandardStateManager")) {
             const XML_Node& vpssNode = thermoNode.child("variablePressureStandardStateManager");
-            vpssManager = lowercase(vpssNode["model"]);
+            vpssManager = ba::to_lower_copy(vpssNode["model"]);
         }
     }
 
     // first get the reference state handler.
-    MultiSpeciesThermo* spth = new MultiSpeciesThermo();
-    vp_ptr->setSpeciesThermo(spth);
+    MultiSpeciesThermo* spth = &vp_ptr->speciesThermo();
 
     // Next, if we have specific directions, use them to get the VPSSSMgr object
     // and return immediately

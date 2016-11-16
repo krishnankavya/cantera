@@ -4,11 +4,9 @@
  *    non-ideal mixtures based on the fugacity models (see \ref thermoprops and
  *    class \link Cantera::MixtureFugacityTP MixtureFugacityTP\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_MIXTUREFUGACITYTP_H
 #define CT_MIXTUREFUGACITYTP_H
@@ -45,6 +43,14 @@ namespace Cantera
  * addition a multicomponent liquid phase below the critical temperature of the
  * mixture is also allowed. The main subclass is currently a mixture Redlich-
  * Kwong class.
+ *
+ * @attention This class currently does not have any test cases or examples. Its
+ *     implementation may be incomplete, and future changes to Cantera may
+ *     unexpectedly cause this class to stop working. If you use this class,
+ *     please consider contributing examples or test cases. In the absence of
+ *     new tests or examples, this class may be deprecated and removed in a
+ *     future version of Cantera. See
+ *     https://github.com/Cantera/cantera/issues/267 for additional information.
  *
  * Several concepts are introduced. The first concept is there are temporary
  * variables for holding the species standard state values of Cp, H, S, G, and V
@@ -545,14 +551,6 @@ protected:
 
     //@}
 
-    class spinodalFunc : public ResidEval
-    {
-    public:
-        spinodalFunc(MixtureFugacityTP* tp);
-        virtual int evalSS(const doublereal t, const doublereal* const y, doublereal* const r);
-        MixtureFugacityTP* m_tp;
-    };
-
 protected:
     virtual void invalidateCache();
 
@@ -598,8 +596,6 @@ protected:
 
     //! Temporary storage for dimensionless reference state entropies
     mutable vector_fp m_s0_R;
-
-    spinodalFunc* fdpdv_;
 };
 }
 

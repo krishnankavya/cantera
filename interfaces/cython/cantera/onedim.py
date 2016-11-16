@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 import numpy as np
 from ._cantera import *
 from .composite import Solution
@@ -69,6 +72,18 @@ class FlameBase(Sim1D):
         """
         super(FlameBase, self).set_profile(self.flame, component, locations,
                                            values)
+
+    @property
+    def max_grid_points(self):
+        """
+        Get/Set the maximum number of grid points used in the solution of
+        this flame.
+        """
+        return super(FlameBase, self).get_max_grid_points(self.flame)
+
+    @max_grid_points.setter
+    def max_grid_points(self, npmax):
+        super(FlameBase, self).set_max_grid_points(self.flame, npmax)
 
     @property
     def transport_model(self):
@@ -437,6 +452,34 @@ class FreeFlame(FlameBase):
         for n in range(self.gas.n_species):
             self.set_profile(self.gas.species_name(n),
                              locs, [Y0[n], Y0[n], Yeq[n], Yeq[n]])
+
+    def get_flame_speed_reaction_sensitivities(self):
+        r"""
+        Compute the normalized sensitivities of the laminar flame speed
+        :math:`S_u` with respect to the reaction rate constants :math:`k_i`:
+
+        .. math::
+
+            s_i = \frac{k_i}{S_u} \frac{dS_u}{dk_i}
+        """
+
+        def g(sim):
+            return sim.u[0]
+
+        Nvars = sum(D.n_components * D.n_points for D in self.domains)
+
+        # Index of u[0] in the global solution vector
+        i_Su = self.inlet.n_components + self.flame.component_index('u')
+
+        dgdx = np.zeros(Nvars)
+        dgdx[i_Su] = 1
+
+        Su0 = g(self)
+
+        def perturb(sim, i, dp):
+            sim.gas.set_multiplier(1+dp, i)
+
+        return self.solve_adjoint(perturb, self.gas.n_reactions, dgdx) / Su0
 
 
 class BurnerFlame(FlameBase):

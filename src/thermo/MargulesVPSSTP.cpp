@@ -5,11 +5,10 @@
  *   expansions (see \ref thermoprops
  *    and class \link Cantera::MargulesVPSSTP MargulesVPSSTP\endlink).
  */
-/*
- * Copyright (2009) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/thermo/MargulesVPSSTP.h"
 #include "cantera/thermo/ThermoFactory.h"
 #include "cantera/base/stringUtils.h"
@@ -265,20 +264,18 @@ void MargulesVPSSTP::initThermoXML(XML_Node& phaseNode, const std::string& id_)
     XML_Node& thermoNode = phaseNode.child("thermo");
 
     // Make sure that the thermo model is Margules
-    string formString = lowercase(thermoNode.attrib("model"));
-    if (formString != "margules") {
+    if (!ba::iequals(thermoNode["model"], "margules")) {
         throw CanteraError("MargulesVPSSTP::initThermoXML",
-                           "model name isn't Margules: " + formString);
+                           "model name isn't Margules: " + thermoNode["model"]);
     }
 
     // Go get all of the coefficients and factors in the activityCoefficients
     // XML block
     if (thermoNode.hasChild("activityCoefficients")) {
         XML_Node& acNode = thermoNode.child("activityCoefficients");
-        string mStringa = acNode.attrib("model");
-        if (lowercase(mStringa) != "margules") {
+        if (!ba::iequals(acNode["model"], "margules")) {
             throw CanteraError("MargulesVPSSTP::initThermoXML",
-                               "Unknown activity coefficient model: " + mStringa);
+                               "Unknown activity coefficient model: " + acNode["model"]);
         }
         for (size_t i = 0; i < acNode.nChildren(); i++) {
             XML_Node& xmlACChild = acNode.child(i);
@@ -286,7 +283,7 @@ void MargulesVPSSTP::initThermoXML(XML_Node& phaseNode, const std::string& id_)
             // Process a binary salt field, or any of the other XML fields that
             // make up the Pitzer Database. Entries will be ignored if any of
             // the species in the entry isn't in the solution.
-            if (lowercase(xmlACChild.name()) == "binaryneutralspeciesparameters") {
+            if (ba::iequals(xmlACChild.name(), "binaryneutralspeciesparameters")) {
                 readXMLBinarySpecies(xmlACChild);
             }
         }
@@ -579,7 +576,7 @@ void MargulesVPSSTP::readXMLBinarySpecies(XML_Node& xmLBinarySpecies)
 
     for (size_t iChild = 0; iChild < xmLBinarySpecies.nChildren(); iChild++) {
         XML_Node& xmlChild = xmLBinarySpecies.child(iChild);
-        string nodeName = lowercase(xmlChild.name());
+        string nodeName = ba::to_lower_copy(xmlChild.name());
 
         // Process the binary species interaction parameters.
         // They are in subblocks labeled:

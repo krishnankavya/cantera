@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 from ._cantera import *
 import numpy as np
 import csv as _csv
@@ -612,7 +615,7 @@ class SolutionArray(object):
                 single_species = True
                 collabels = ['{}_{}'.format(species, c)]
             else:
-                raise Exception('property "{}" not supported'.format(c))
+                raise CanteraError('property "{}" not supported'.format(c))
 
             # Get the data for the current group of columns
             if single_species:

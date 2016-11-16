@@ -4,12 +4,8 @@
  *    (see class \ref numerics and \link Cantera::GeneralMatrix GeneralMatrix\endlink).
  */
 
-/*
- * Copyright 2004 Sandia Corporation. Under the terms of Contract
- * DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
- * retains certain rights in this software.
- * See file License.txt for licensing information.
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_GENERALMATRIX_H
 #define CT_GENERALMATRIX_H
@@ -119,6 +115,7 @@ public:
      * @param iStruct OUTPUT Pointer to a vector of ints that describe the
      *     structure of the matrix.
      * @returns the number of rows and columns in the matrix.
+     * @deprecated Unused. To be removed after Cantera 2.3.
      */
     virtual size_t nRowsAndStruct(size_t* const iStruct = 0) const = 0;
 

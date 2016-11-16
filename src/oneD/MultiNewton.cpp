@@ -1,8 +1,7 @@
 //! @file MultiNewton.cpp Damped Newton solver for 1D multi-domain problems
 
-/*
- *  Copyright 2001 California Institute of Technology
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/oneD/MultiNewton.h"
 #include "cantera/base/utilities.h"
@@ -168,27 +167,29 @@ void MultiNewton::step(doublereal* x, doublereal* step,
         step[n] = -step[n];
     }
 
-    size_t iok = jac.solve(step, step);
-    // if iok is non-zero, then solve failed
-    if (iok != 0) {
-        iok--;
-        size_t nd = r.nDomains();
-        size_t n;
-        for (n = nd-1; n != npos; n--) {
-            if (iok >= r.start(n)) {
-                break;
+    try {
+        jac.solve(step, step);
+    } catch (CanteraError&) {
+        int iok = jac.info() - 1;
+        if (iok >= 0) {
+            size_t nd = r.nDomains();
+            size_t n;
+            for (n = nd-1; n != npos; n--) {
+                if (iok >= static_cast<int>(r.start(n))) {
+                    break;
+                }
             }
+            Domain1D& dom = r.domain(n);
+            size_t offset = iok - r.start(n);
+            size_t pt = offset/dom.nComponents();
+            size_t comp = offset - pt*dom.nComponents();
+            throw CanteraError("MultiNewton::step",
+                "Jacobian is singular for domain {}, component {} at point {}\n"
+                "(Matrix row {})",
+                dom.id(), dom.componentName(comp), pt, iok);
+        } else {
+            throw;
         }
-        Domain1D& dom = r.domain(n);
-        size_t offset = iok - r.start(n);
-        size_t pt = offset/dom.nComponents();
-        size_t comp = offset - pt*dom.nComponents();
-        throw CanteraError("MultiNewton::step",
-            "Jacobian is singular for domain {}, component {} at point {}\n"
-            "(Matrix row {}) \nsee file bandmatrix.csv\n",
-            dom.id(), dom.componentName(comp), pt, iok);
-    } else if (int(iok) < 0) {
-        throw CanteraError("MultiNewton::step", "iok = {}", iok);
     }
 }
 

@@ -1,4 +1,8 @@
 //! @file ReactorNet.cpp
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/zeroD/ReactorNet.h"
 #include "cantera/zeroD/FlowDevice.h"
 #include "cantera/zeroD/Wall.h"
@@ -11,24 +15,20 @@ namespace Cantera
 {
 
 ReactorNet::ReactorNet() :
-    m_integ(0), m_time(0.0), m_init(false), m_integrator_init(false),
+    m_integ(newIntegrator("CVODE")),
+    m_time(0.0), m_init(false), m_integrator_init(false),
     m_nv(0), m_rtol(1.0e-9), m_rtolsens(1.0e-4),
     m_atols(1.0e-15), m_atolsens(1.0e-6),
     m_maxstep(0.0), m_maxErrTestFails(0),
     m_verbose(false)
 {
-    m_integ = newIntegrator("CVODE");
+    suppressErrors(true);
 
     // use backward differencing, with a full Jacobian computed
     // numerically, and use a Newton linear iterator
     m_integ->setMethod(BDF_Method);
     m_integ->setProblemType(DENSE + NOJAC);
     m_integ->setIterator(Newton_Iter);
-}
-
-ReactorNet::~ReactorNet()
-{
-    delete m_integ;
 }
 
 void ReactorNet::setInitialTime(double time)

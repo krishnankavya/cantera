@@ -1,5 +1,7 @@
 import math
 import re
+from os.path import join as pjoin
+import os
 
 import numpy as np
 from .utilities import unittest
@@ -44,9 +46,9 @@ class TestReactor(utilities.CanteraTest):
 
     def test_insert(self):
         R = self.reactorClass()
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             R.T
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             R.kinetics.net_production_rates
 
         g = ct.Solution('h2o2.xml')
@@ -425,7 +427,6 @@ class TestReactor(utilities.CanteraTest):
             self.assertNear(m1a+m2a, m1+m2)
             self.assertArrayNear(self.r1.Y, Y1)
 
-
     def test_valve3(self):
         # This case specifies a non-linear relationship between pressure drop
         # and flow rate.
@@ -439,6 +440,7 @@ class TestReactor(utilities.CanteraTest):
         Y1 = self.r1.Y
         kO2 = self.gas1.species_index('O2')
         kAr = self.gas1.species_index('AR')
+
         def speciesMass(k):
             return self.r1.Y[k] * self.r1.mass + self.r2.Y[k] * self.r2.mass
         mO2 = speciesMass(kO2)
@@ -458,12 +460,12 @@ class TestReactor(utilities.CanteraTest):
         self.make_reactors()
         res = ct.Reservoir()
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             # Must assign contents of both reactors before creating Valve
             v = ct.Valve(self.r1, res)
 
         v = ct.Valve(self.r1, self.r2)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             # inlet and outlet cannot be reassigned
             v._install(self.r2, self.r1)
 
@@ -497,15 +499,15 @@ class TestReactor(utilities.CanteraTest):
 
         p = ct.PressureController(self.r1, self.r2, master=mfc, K=0.5)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             p = ct.PressureController(self.r1, self.r2, K=0.5)
             p.mdot(0.0)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             p = ct.PressureController(self.r1, self.r2, master=mfc)
             p.mdot(0.0)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             p = ct.PressureController(self.r1, self.r2)
             p.mdot(0.0)
 
@@ -917,8 +919,8 @@ class TestSurfaceKinetics(utilities.CanteraTest):
         surf1.coverages = C
         self.assertArrayNear(surf1.coverages, C)
         data = []
-        test_file = 'test_coverages_regression1.csv'
-        reference_file = '../data/WallKinetics-coverages-regression1.csv'
+        test_file = pjoin(self.test_work_dir, 'test_coverages_regression1.csv')
+        reference_file = pjoin(self.test_data_dir, 'WallKinetics-coverages-regression1.csv')
         data = []
         for t in np.linspace(1e-6, 1e-3):
             self.net.advance(t)
@@ -942,8 +944,8 @@ class TestSurfaceKinetics(utilities.CanteraTest):
         surf.coverages = C
         self.assertArrayNear(surf.coverages, C)
         data = []
-        test_file = 'test_coverages_regression2.csv'
-        reference_file = '../data/WallKinetics-coverages-regression2.csv'
+        test_file = pjoin(self.test_work_dir, 'test_coverages_regression2.csv')
+        reference_file = pjoin(self.test_data_dir, 'WallKinetics-coverages-regression2.csv')
         data = []
         for t in np.linspace(1e-6, 1e-3):
             self.net.advance(t)
@@ -1281,8 +1283,8 @@ class CombustorTestImplementation(object):
     consistent output.
     """
 
-    referenceFile = '../data/CombustorTest-integrateWithAdvance.csv'
     def setUp(self):
+        self.referenceFile = pjoin(os.path.dirname(__file__), 'data', 'CombustorTest-integrateWithAdvance.csv')
         self.gas = ct.Solution('h2o2.xml')
 
         # create a reservoir for the fuel inlet, and set to pure methane.
@@ -1369,8 +1371,8 @@ class WallTestImplementation(object):
     consistent output.
     """
 
-    referenceFile = '../data/WallTest-integrateWithAdvance.csv'
     def setUp(self):
+        self.referenceFile = pjoin(os.path.dirname(__file__), 'data', 'WallTest-integrateWithAdvance.csv')
         # reservoir to represent the environment
         self.gas0 = ct.Solution('air.xml')
         self.gas0.TP = 300, ct.one_atm
@@ -1432,3 +1434,60 @@ class WallTestImplementation(object):
 # so that they can be run independently to generate the reference data files.
 class CombustorTest(CombustorTestImplementation, unittest.TestCase): pass
 class WallTest(WallTestImplementation, unittest.TestCase): pass
+
+
+class PureFluidReactorTest(utilities.CanteraTest):
+    def test_Reactor(self):
+        phase = ct.PureFluid('liquidvapor.xml', 'oxygen')
+        air = ct.Solution('air.xml')
+
+        phase.TP = 93, 4e5
+        r1 = ct.Reactor(phase)
+        r1.volume = 0.1
+
+        air.TP = 300, 4e5
+        r2 = ct.Reactor(air)
+        r2.volume = 10.0
+
+        air.TP = 500, 4e5
+        env = ct.Reservoir(air)
+
+        w1 = ct.Wall(r1,r2)
+        w1.expansion_rate_coeff = 1e-3
+        w2 = ct.Wall(env,r1, Q=500000, A=1)
+        net = ct.ReactorNet([r1,r2])
+        net.atol = 1e-10
+        net.rtol = 1e-6
+
+        states = ct.SolutionArray(phase, extra='t')
+        for t in np.arange(0.0, 60.0, 1):
+            net.advance(t)
+            states.append(TD=r1.thermo.TD, t=net.time)
+
+        self.assertEqual(states.X[0], 0)
+        self.assertEqual(states.X[-1], 1)
+        self.assertNear(states.X[30], 0.54806, 1e-4)
+
+    def test_ConstPressureReactor(self):
+        phase = ct.Nitrogen()
+        air = ct.Solution('air.xml')
+
+        phase.TP = 75, 4e5
+        r1 = ct.ConstPressureReactor(phase)
+        r1.volume = 0.1
+
+        air.TP = 500, 4e5
+        env = ct.Reservoir(air)
+
+        w2 = ct.Wall(env,r1, Q=250000, A=1)
+        net = ct.ReactorNet([r1])
+
+        states = ct.SolutionArray(phase, extra='t')
+        for t in np.arange(0.0, 100.0, 10):
+            net.advance(t)
+            states.append(TD=r1.thermo.TD, t=t)
+
+        self.assertEqual(states.X[1], 0)
+        self.assertEqual(states.X[-2], 1)
+        for i in range(3,7):
+            self.assertNear(states.T[i], states.T[2])

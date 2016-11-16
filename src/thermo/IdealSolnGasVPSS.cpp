@@ -6,11 +6,9 @@
  * thermodynamic properties (see \ref thermoprops and
  * class \link Cantera::IdealSolnGasVPSS IdealSolnGasVPSS\endlink).
  */
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/IdealSolnGasVPSS.h"
 #include "cantera/thermo/PDSS.h"
@@ -299,17 +297,16 @@ void IdealSolnGasVPSS::initThermoXML(XML_Node& phaseNode, const std::string& id_
                                "standardConc node for ideal gas");
         }
         XML_Node& scNode = phaseNode.child("standardConc");
-        string formStringa = scNode.attrib("model");
-        string formString = lowercase(formStringa);
-        if (formString == "unity") {
+        string formString = scNode.attrib("model");
+        if (ba::iequals(formString, "unity")) {
             m_formGC = 0;
-        } else if (formString == "molar_volume") {
+        } else if (ba::iequals(formString, "molar_volume")) {
             m_formGC = 1;
-        } else if (formString == "solvent_volume") {
+        } else if (ba::iequals(formString, "solvent_volume")) {
             m_formGC = 2;
         } else {
             throw CanteraError("initThermoXML",
-                               "Unknown standardConc model: " + formStringa);
+                               "Unknown standardConc model: " + formString);
         }
     } else {
         if (!m_idealGas) {

@@ -2,6 +2,9 @@
  *  @file Reaction.cpp
  */
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/kinetics/Reaction.h"
 #include "cantera/kinetics/FalloffFactory.h"
 #include "cantera/base/ctml.h"
@@ -202,7 +205,7 @@ ChemicallyActivatedReaction::ChemicallyActivatedReaction(
         const Composition& reactants_, const Composition& products_,
         const Arrhenius& low_rate_, const Arrhenius& high_rate_,
         const ThirdBody& tbody)
-    : FalloffReaction(reactants_, products_, low_rate, high_rate, tbody)
+    : FalloffReaction(reactants_, products_, low_rate_, high_rate_, tbody)
 {
     reaction_type = CHEMACT_RXN;
 }
@@ -293,19 +296,19 @@ void readFalloff(FalloffReaction& R, const XML_Node& rc_node)
     }
 
     int falloff_type = 0;
-    if (lowercase(falloff["type"]) == "lindemann") {
+    if (ba::iequals(falloff["type"], "lindemann")) {
         falloff_type = SIMPLE_FALLOFF;
         if (np != 0) {
             throw CanteraError("readFalloff", "Lindemann parameterization "
                 "takes no parameters, but {} were given", np);
         }
-    } else if (lowercase(falloff["type"]) == "troe") {
+    } else if (ba::iequals(falloff["type"], "troe")) {
         falloff_type = TROE_FALLOFF;
         if (np != 3 && np != 4) {
             throw CanteraError("readFalloff", "Troe parameterization takes "
                 "3 or 4 parameters, but {} were given", np);
         }
-    } else if (lowercase(falloff["type"]) == "sri") {
+    } else if (ba::iequals(falloff["type"], "sri")) {
         falloff_type = SRI_FALLOFF;
         if (np != 3 && np != 5) {
             throw CanteraError("readFalloff", "SRI parameterization takes "
@@ -476,23 +479,23 @@ void setupChebyshevReaction(ChebyshevReaction& R, const XML_Node& rxn_node)
 
 void setupInterfaceReaction(InterfaceReaction& R, const XML_Node& rxn_node)
 {
-    if (lowercase(rxn_node["type"]) == "global") {
+    if (ba::iequals(rxn_node["type"], "global")) {
         R.reaction_type = GLOBAL_RXN;
     }
     XML_Node& arr = rxn_node.child("rateCoeff").child("Arrhenius");
-    if (lowercase(arr["type"]) == "stick") {
+    if (ba::iequals(arr["type"], "stick")) {
         R.is_sticking_coefficient = true;
         R.sticking_species = arr["species"];
 
-        if (lowercase(arr["motz_wise"]) == "true") {
+        if (ba::iequals(arr["motz_wise"], "true")) {
             R.use_motz_wise_correction = true;
-        } else if (lowercase(arr["motz_wise"]) == "false") {
+        } else if (ba::iequals(arr["motz_wise"], "false")) {
             R.use_motz_wise_correction = false;
         } else {
             // Default value for all reactions
             XML_Node* parent = rxn_node.parent();
             if (parent && parent->name() == "reactionData"
-                && lowercase((*parent)["motz_wise"]) == "true") {
+                && ba::iequals((*parent)["motz_wise"], "true")) {
                 R.use_motz_wise_correction = true;
             }
         }
@@ -511,7 +514,7 @@ void setupElectrochemicalReaction(ElectrochemicalReaction& R,
                                   const XML_Node& rxn_node)
 {
     // Fix reaction_type for some specialized reaction types
-    std::string type = lowercase(rxn_node["type"]);
+    std::string type = ba::to_lower_copy(rxn_node["type"]);
     if (type == "butlervolmer") {
         R.reaction_type = BUTLERVOLMER_RXN;
     } else if (type == "butlervolmer_noactivitycoeffs") {
@@ -523,7 +526,7 @@ void setupElectrochemicalReaction(ElectrochemicalReaction& R,
     }
 
     XML_Node& rc = rxn_node.child("rateCoeff");
-    std::string rc_type = lowercase(rc["type"]);
+    std::string rc_type = ba::to_lower_copy(rc["type"]);
     if (rc_type == "exchangecurrentdensity") {
         R.exchange_current_density_formulation = true;
     } else if (rc_type != "" && rc_type != "arrhenius") {
@@ -566,13 +569,13 @@ void setupElectrochemicalReaction(ElectrochemicalReaction& R,
         R.orders.clear();
         R.allow_nonreactant_orders = true;
         const XML_Node& rof_node = rxn_node.child("reactionOrderFormulation");
-        if (lowercase(rof_node["model"]) == "reactantorders") {
+        if (ba::iequals(rof_node["model"], "reactantorders")) {
             R.orders = initial_orders;
-        } else if (lowercase(rof_node["model"]) == "zeroorders") {
+        } else if (ba::iequals(rof_node["model"], "zeroorders")) {
             for (const auto& sp : R.reactants) {
                 R.orders[sp.first] = 0.0;
             }
-        } else if (lowercase(rof_node["model"]) == "butlervolmerorders") {
+        } else if (ba::iequals(rof_node["model"], "butlervolmerorders")) {
             // Reaction orders based on provided reaction orders
             for (const auto& sp : R.reactants) {
                 double c = getValue(initial_orders, sp.first, sp.second);
@@ -600,7 +603,7 @@ void setupElectrochemicalReaction(ElectrochemicalReaction& R,
 
 shared_ptr<Reaction> newReaction(const XML_Node& rxn_node)
 {
-    std::string type = lowercase(rxn_node["type"]);
+    std::string type = ba::to_lower_copy(rxn_node["type"]);
 
     // Modify the reaction type for edge reactions which contain electrochemical
     // reaction data

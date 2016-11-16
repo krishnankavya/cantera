@@ -4,9 +4,8 @@
  * Boundary objects for one-dimensional simulations.
  */
 
-/*
- * Copyright 2002-3  California Institute of Technology
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_BDRY1D_H
 #define CT_BDRY1D_H
@@ -81,10 +80,6 @@ public:
         return m_mdot;
     }
 
-    virtual void _getInitialSoln(doublereal* x) {
-        writelog("Bdry1D::_getInitialSoln called!\n");
-    }
-
     virtual void setupGrid(size_t n, const doublereal* z) {}
 
 protected:
@@ -124,8 +119,6 @@ public:
 
     virtual void showSolution(const double* x);
 
-    virtual void _getInitialSoln(double* x);
-
     virtual size_t nSpecies() {
         return m_nsp;
     }
@@ -135,7 +128,6 @@ public:
     virtual doublereal massFraction(size_t k) {
         return m_yin[k];
     }
-    virtual std::string componentName(size_t n) const;
     virtual void init();
     virtual void eval(size_t jg, doublereal* xg, doublereal* rg,
                       integer* diagg, doublereal rdt);
@@ -155,14 +147,13 @@ protected:
  * A terminator that does nothing.
  * @ingroup onedim
  */
-class Empty1D : public Domain1D
+class Empty1D : public Bdry1D
 {
 public:
-    Empty1D() : Domain1D() {
+    Empty1D() : Bdry1D() {
         m_type = cEmptyType;
     }
 
-    virtual std::string componentName(size_t n) const;
     virtual void showSolution(const doublereal* x) {}
 
     virtual void init();
@@ -172,9 +163,6 @@ public:
 
     virtual XML_Node& save(XML_Node& o, const doublereal* const soln);
     virtual void restore(const XML_Node& dom, doublereal* soln, int loglevel);
-    virtual void _getInitialSoln(doublereal* x) {
-        x[0] = 0.0;
-    }
 };
 
 /**
@@ -189,8 +177,6 @@ public:
         m_type = cSymmType;
     }
 
-    virtual std::string componentName(size_t n) const;
-
     virtual void init();
 
     virtual void eval(size_t jg, doublereal* xg, doublereal* rg,
@@ -198,9 +184,6 @@ public:
 
     virtual XML_Node& save(XML_Node& o, const doublereal* const soln);
     virtual void restore(const XML_Node& dom, doublereal* soln, int loglevel);
-    virtual void _getInitialSoln(doublereal* x) {
-        x[0] = m_temp;
-    }
 };
 
 
@@ -215,8 +198,6 @@ public:
         m_type = cOutletType;
     }
 
-    virtual std::string componentName(size_t n) const;
-
     virtual void init();
 
     virtual void eval(size_t jg, doublereal* xg, doublereal* rg,
@@ -224,9 +205,6 @@ public:
 
     virtual XML_Node& save(XML_Node& o, const doublereal* const soln);
     virtual void restore(const XML_Node& dom, doublereal* soln, int loglevel);
-    virtual void _getInitialSoln(doublereal* x) {
-        x[0] = m_temp;
-    }
 };
 
 
@@ -241,10 +219,6 @@ public:
 
     virtual void showSolution(const doublereal* x) {}
 
-    virtual void _getInitialSoln(doublereal* x) {
-        x[0] = m_temp;
-    }
-
     virtual size_t nSpecies() {
         return m_nsp;
     }
@@ -254,7 +228,6 @@ public:
     virtual doublereal massFraction(size_t k) {
         return m_yres[k];
     }
-    virtual std::string componentName(size_t n) const;
     virtual void init();
     virtual void eval(size_t jg, doublereal* xg, doublereal* rg,
                       integer* diagg, doublereal rdt);
@@ -281,8 +254,6 @@ public:
         m_type = cSurfType;
     }
 
-    virtual std::string componentName(size_t n) const;
-
     virtual void init();
 
     virtual void eval(size_t jg, doublereal* xg, doublereal* rg,
@@ -290,10 +261,6 @@ public:
 
     virtual XML_Node& save(XML_Node& o, const doublereal* const soln);
     virtual void restore(const XML_Node& dom, doublereal* soln, int loglevel);
-
-    virtual void _getInitialSoln(doublereal* x) {
-        x[0] = m_temp;
-    }
 
     virtual void showSolution_s(std::ostream& s, const double* x);
 
@@ -329,12 +296,11 @@ public:
     virtual void restore(const XML_Node& dom, doublereal* soln, int loglevel);
 
     virtual void _getInitialSoln(doublereal* x) {
-        x[0] = m_temp;
-        m_sphase->getCoverages(x+1);
+        m_sphase->getCoverages(x);
     }
 
     virtual void _finalize(const doublereal* x) {
-        std::copy(x+1,x+1+m_nsp,m_fixed_cov.begin());
+        std::copy(x, x+m_nsp, m_fixed_cov.begin());
     }
 
     virtual void showSolution(const doublereal* x);
@@ -346,7 +312,6 @@ protected:
     bool m_enabled;
     vector_fp m_work;
     vector_fp m_fixed_cov;
-    int dum;
 };
 
 }

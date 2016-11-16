@@ -3,6 +3,9 @@
  *  Source code for liquid mixture transport property evaluations.
  */
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/transport/LiquidTransportParams.h"
 #include "cantera/thermo/IonsFromNeutralVPSSTP.h"
 #include "cantera/thermo/MargulesVPSSTP.h"
@@ -59,8 +62,8 @@ void LiquidTranInteraction::init(const XML_Node& compModelNode,
 
     for (size_t iChild = 0; iChild < compModelNode.nChildren(); iChild++) {
         XML_Node& xmlChild = compModelNode.child(iChild);
-        std::string nodeName = lowercase(xmlChild.name());
-        if (nodeName != "interaction") {
+        std::string nodeName = xmlChild.name();
+        if (!ba::iequals(nodeName, "interaction")) {
             throw CanteraError("TransportFactory::getLiquidInteractionsTransportData",
                                "expected <interaction> element and got <" + nodeName + ">");
         }

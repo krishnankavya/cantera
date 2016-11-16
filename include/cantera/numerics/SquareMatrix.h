@@ -1,11 +1,7 @@
 //! @file SquareMatrix.h Dense, Square (not sparse) matrices.
 
-/*
- * Copyright 2004 Sandia Corporation. Under the terms of Contract
- * DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government
- * retains certain rights in this software.
- * See file License.txt for licensing information.
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_SQUAREMATRIX_H
 #define CT_SQUAREMATRIX_H
@@ -99,6 +95,7 @@ public:
      *    structure of the matrix. not used
      *
      * @returns the number of rows and columns in the matrix.
+     * @deprecated Unused. To be removed after Cantera 2.3.
      */
     size_t nRowsAndStruct(size_t* const iStruct = 0) const;
 

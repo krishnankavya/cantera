@@ -1,4 +1,8 @@
 //! @file OneDim.cpp
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/oneD/OneDim.h"
 #include "cantera/numerics/Func1.h"
 #include "cantera/base/ctml.h"
@@ -188,7 +192,7 @@ void OneDim::resize()
         // bandwidth of the local block
         size_t bw1 = d->bandwidth();
         if (bw1 == npos) {
-            bw1 = 2*d->nComponents() - 1;
+            bw1 = std::max<size_t>(2*d->nComponents(), 1) - 1;
         }
         m_bw = std::max(m_bw, bw1);
 

@@ -1,6 +1,7 @@
 //! @file ConstPressureReactor.cpp A constant pressure zero-dimensional reactor
 
-// Copyright 2001  California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/zeroD/ConstPressureReactor.h"
 #include "cantera/zeroD/FlowDevice.h"
@@ -56,7 +57,7 @@ void ConstPressureReactor::updateState(doublereal* y)
     m_mass = y[0];
     m_thermo->setMassFractions_NoNorm(y+2);
     if (m_energy) {
-        m_thermo->setState_HP(y[1]/m_mass, m_pressure, 1.0e-4);
+        m_thermo->setState_HP(y[1]/m_mass, m_pressure);
     } else {
         m_thermo->setPressure(m_pressure);
     }

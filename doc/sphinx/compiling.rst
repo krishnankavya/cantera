@@ -34,7 +34,7 @@ Linux
 * For Ubuntu or Debian users, the following packages should be installed using
   your choice of package manager::
 
-      g++ python scons libsundials-serial-dev
+      g++ python scons libsundials-serial-dev libboost-dev
 
 * Building the python module also requires::
 
@@ -47,7 +47,7 @@ Linux
 * For Fedora (version 22 or higher) users, the following packages should
   be installed via the package manager::
 
-      gcc-c++ python scons sundials-devel blas-devel lapack-devel
+      gcc-c++ python scons sundials-devel blas-devel lapack-devel boost-devel
 
   If your Fedora version is lower than 22, the `sundials-devel` package is not
   available, and you should build Sundials from source.
@@ -59,7 +59,7 @@ Linux
 * Checking out the source code from version control requires Git (install
   ``git``).
 
-* The minimum compatible Cython version is 0.19. If your distribution does not
+* The minimum compatible Cython version is 0.23. If your distribution does not
   contain a suitable version, you may be able to install a more recent version
   using `pip`.
 
@@ -495,14 +495,14 @@ Optional Programs
   * Optional. If Sundials is not installed, it will be automatically downloaded
     and the necessary portions will be compiled and installed with Cantera.
   * https://computation.llnl.gov/casc/sundials/download/download.html
-  * Known to work with versions 2.4, 2.5 and 2.6.
+  * Known to work with versions 2.4, 2.5, 2.6, and 2.7.
   * To use Sundials with Cantera on a Linux/Unix system, it must be compiled
     with the ``-fPIC`` flag. You can specify this flag when configuring
     Sundials (2.4 or 2.5)::
 
           configure --with-cflags=-fPIC
 
-    or Sundials 2.6::
+    or Sundials 2.6 or 2.7::
 
           cmake -DCMAKE_C_FLAGS=-fPIC <other command-line options>
 

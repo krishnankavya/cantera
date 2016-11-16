@@ -4,7 +4,9 @@
  *    manage the standard-state thermodynamic properties of a set of species
  *    (see \ref spthermo);
  */
-// Copyright 2001  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/SpeciesThermoFactory.h"
 #include "cantera/thermo/MultiSpeciesThermo.h"
@@ -55,7 +57,7 @@ SpeciesThermoInterpType* newSpeciesThermoInterpType(const std::string& stype,
     double tlow, double thigh, double pref, const double* coeffs)
 {
     int itype = -1;
-    std::string type = lowercase(stype);
+    std::string type = ba::to_lower_copy(stype);
     if (type == "nasa2" || type == "nasa") {
         itype = NASA2; // two-region 7-coefficient NASA polynomials
     } else if (type == "const_cp" || type == "simple") {
@@ -164,11 +166,11 @@ SpeciesThermoInterpType* newShomateForMineralEQ3(const XML_Node& MinEQ3node)
     doublereal a = getFloat(MinEQ3node, "a", "toSI") / toSI("cal/gmol/K");
     doublereal b = getFloat(MinEQ3node, "b", "toSI") / toSI("cal/gmol/K2");
     doublereal c = getFloat(MinEQ3node, "c", "toSI") / toSI("cal-K/gmol");
-    doublereal dg = deltaG_formation_pr_tr * 4.184 * 1.0E3;
-    doublereal DHjmol = deltaH_formation_pr_tr * 1.0E3 * 4.184;
-    doublereal fac = DHjmol - dg - 298.15 * Entrop_pr_tr * 1.0E3 * 4.184;
+    doublereal dg = deltaG_formation_pr_tr * toSI("cal/gmol");
+    doublereal DHjmol = deltaH_formation_pr_tr * toSI("cal/gmol");
+    doublereal fac = DHjmol - dg - 298.15 * Entrop_pr_tr * toSI("cal/gmol");
     doublereal Mu0_tr_pr = fac + dg;
-    doublereal e = Entrop_pr_tr * 1.0E3 * 4.184;
+    doublereal e = Entrop_pr_tr * toSI("cal/gmol");
     doublereal Hcalc = Mu0_tr_pr + 298.15 * e;
 
     // Now calculate the shomate polynomials
@@ -179,11 +181,11 @@ SpeciesThermoInterpType* newShomateForMineralEQ3(const XML_Node& MinEQ3node)
     //    Cp = As + Bs * t + Cs * t*t + Ds * t*t*t + Es / (t*t)
     //     where
     //          t = temperature(Kelvin) / 1000
-    double As = a * 4.184;
-    double Bs = b * 4.184 * 1000.;
+    double As = a * toSI("cal");
+    double Bs = b * toSI("cal") * 1000.;
     double Cs = 0.0;
     double Ds = 0.0;
-    double Es = c * 4.184 / (1.0E6);
+    double Es = c * toSI("cal") / (1.0E6);
 
     double t = 298.15 / 1000.;
     double H298smFs = As * t + Bs * t * t / 2.0 - Es / t;
@@ -390,10 +392,10 @@ SpeciesThermoInterpType* newSpeciesThermoInterpType(const XML_Node& thermo)
         }
     }
 
-    std::string thermoType = lowercase(tp[0]->name());
+    std::string thermoType = ba::to_lower_copy(tp[0]->name());
 
     for (size_t i = 1; i < tp.size(); i++) {
-        if (lowercase(tp[i]->name()) != thermoType) {
+        if (!ba::iequals(tp[i]->name(), thermoType)) {
             throw CanteraError("newSpeciesThermoInterpType",
                 "Encountered unsupported mixed species thermo parameterizations");
         }
@@ -406,7 +408,7 @@ SpeciesThermoInterpType* newSpeciesThermoInterpType(const XML_Node& thermo)
             "Too many regions in thermo parameterization.");
     }
 
-    std::string model = lowercase(thermo["model"]);
+    std::string model = ba::to_lower_copy(thermo["model"]);
     if (model == "mineraleq3") {
         if (thermoType != "mineq3") {
             throw CanteraError("newSpeciesThermoInterpType",

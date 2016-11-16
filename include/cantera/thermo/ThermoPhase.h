@@ -5,7 +5,8 @@
  * (see \ref thermoprops and class \link Cantera::ThermoPhase ThermoPhase\endlink).
  */
 
-//  Copyright 2002 California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_THERMOPHASE_H
 #define CT_THERMOPHASE_H
@@ -947,9 +948,9 @@ public:
      * @param p     Pressure (Pa)
      * @param tol   Optional parameter setting the tolerance of the calculation.
      *              Important for some applications where numerical Jacobians
-     *              are being calculated.Defaults to 1.0E-4
+     *              are being calculated.
      */
-    virtual void setState_HP(doublereal h, doublereal p, doublereal tol = 1.e-4);
+    virtual void setState_HP(double h, double p, double tol=1e-9);
 
     //! Set the specific internal energy (J/kg) and specific volume (m^3/kg).
     /*!
@@ -961,9 +962,9 @@ public:
      * @param v    specific volume (m^3/kg).
      * @param tol  Optional parameter setting the tolerance of the calculation.
      *             Important for some applications where numerical Jacobians
-     *             are being calculated.Defaults to 1.0E-4
+     *             are being calculated.
      */
-    virtual void setState_UV(doublereal u, doublereal v, doublereal tol = 1.e-4);
+    virtual void setState_UV(double u, double v, double tol=1e-9);
 
     //! Set the specific entropy (J/kg/K) and pressure (Pa).
     /*!
@@ -973,10 +974,10 @@ public:
      * @param s    specific entropy (J/kg/K)
      * @param p    specific pressure (Pa).
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      */
-    virtual void setState_SP(doublereal s, doublereal p, doublereal tol = 1.e-4);
+    virtual void setState_SP(double s, double p, double tol=1e-9);
 
     //! Set the specific entropy (J/kg/K) and specific volume (m^3/kg).
     /*!
@@ -986,10 +987,10 @@ public:
      * @param s    specific entropy (J/kg/K)
      * @param v    specific volume (m^3/kg).
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      */
-    virtual void setState_SV(doublereal s, doublereal v, doublereal tol = 1.e-4);
+    virtual void setState_SV(double s, double v, double tol=1e-9);
 
     //! Set the specific entropy (J/kg/K) and temperature (K).
     /*!
@@ -1000,10 +1001,10 @@ public:
      * @param s    specific entropy (J/kg/K)
      * @param t    temperature (K)
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      */
-    virtual void setState_ST(double s, double t, double tol = 1.e-4) {
+    virtual void setState_ST(double s, double t, double tol=1e-9) {
         throw NotImplementedError("ThermoPhase::setState_ST");
     }
 
@@ -1016,10 +1017,10 @@ public:
      * @param t    temperature (K)
      * @param v    specific volume (m^3/kg)
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      */
-    virtual void setState_TV(double t, double v, double tol = 1.e-4) {
+    virtual void setState_TV(double t, double v, double tol=1e-9) {
         throw NotImplementedError("ThermoPhase::setState_TV");
     }
 
@@ -1032,10 +1033,10 @@ public:
      * @param p    pressure (Pa)
      * @param v    specific volume (m^3/kg)
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      */
-    virtual void setState_PV(double p, double v, double tol = 1.e-4) {
+    virtual void setState_PV(double p, double v, double tol=1e-9) {
         throw NotImplementedError("ThermoPhase::setState_PV");
     }
 
@@ -1048,10 +1049,10 @@ public:
      * @param u    specific internal energy (J/kg)
      * @param p    pressure (Pa)
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      */
-    virtual void setState_UP(double u, double p, double tol = 1.e-4) {
+    virtual void setState_UP(double u, double p, double tol=1e-9) {
         throw NotImplementedError("ThermoPhase::setState_UP");
     }
 
@@ -1064,10 +1065,10 @@ public:
      * @param v    specific volume (m^3/kg)
      * @param h    specific enthalpy (J/kg)
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      */
-    virtual void setState_VH(double v, double h, double tol = 1.e-4) {
+    virtual void setState_VH(double v, double h, double tol=1e-9) {
         throw NotImplementedError("ThermoPhase::setState_VH");
     }
 
@@ -1080,10 +1081,10 @@ public:
      * @param t    temperature (K)
      * @param h    specific enthalpy (J/kg)
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      */
-    virtual void setState_TH(double t, double h, double tol = 1.e-4) {
+    virtual void setState_TH(double t, double h, double tol=1e-9) {
         throw NotImplementedError("ThermoPhase::setState_TH");
     }
 
@@ -1096,10 +1097,10 @@ public:
      * @param s    specific entropy (J/kg/K)
      * @param h    specific enthalpy (J/kg)
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      */
-    virtual void setState_SH(double s, double h, double tol = 1.e-4) {
+    virtual void setState_SH(double s, double h, double tol=1e-9) {
         throw NotImplementedError("ThermoPhase::setState_SH");
     }
 
@@ -1208,24 +1209,23 @@ private:
      * @param h     Specific enthalpy or internal energy (J/kg)
      * @param p     Pressure (Pa) or specific volume (m^3/kg)
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      * @param doUV  True if solving for UV, false for HP.
      */
     void setState_HPorUV(doublereal h, doublereal p,
-                         doublereal tol = 1.e-4, bool doUV = false);
+                         doublereal tol=1e-9, bool doUV = false);
 
     //! Carry out work in SP and SV calculations.
     /*!
      * @param s     Specific entropy (J/kg)
      * @param p     Pressure (Pa) or specific volume (m^3/kg)
      * @param tol   Optional parameter setting the tolerance of the calculation.
-     *              Defaults to 1.0E-4. Important for some applications where
-     *              numerical Jacobians are being calculated.
+     *              Important for some applications where numerical Jacobians
+     *              are being calculated.
      * @param doSV  True if solving for SV, false for SP.
      */
-    void setState_SPorSV(doublereal s, doublereal p,
-                         doublereal tol = 1.e-4, bool doSV = false);
+    void setState_SPorSV(double s, double p, double tol=1e-9, bool doSV = false);
 
     //! Helper function used by setState_HPorUV and setState_SPorSV.
     //! Sets the temperature and (if set_p is true) the pressure.
@@ -1442,7 +1442,8 @@ public:
      * @param spthermo input pointer to the species thermodynamic property
      *                 manager.
      *
-     *  @internal
+     * @internal
+     * @deprecated Unused. To be removed after Cantera 2.3.
      */
     void setSpeciesThermo(MultiSpeciesThermo* spthermo);
 

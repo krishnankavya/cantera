@@ -2,11 +2,9 @@
  *  @file vcs_MultiPhaseEquil.cpp
  *    Driver routine for the VCSnonideal equilibrium solver package
  */
-/*
- * Copyright (2006) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/equil/vcs_MultiPhaseEquil.h"
 #include "cantera/equil/vcs_VolPhase.h"
@@ -108,7 +106,7 @@ int vcs_MultiPhaseEquil::equilibrate_TV(int XY, doublereal xtarget,
 
         double Verr = fabs((Vtarget - Vnow)/Vtarget);
         if (Verr < err) {
-            goto done;
+            return iSuccess;
         }
         double Pnew;
         // find dV/dP
@@ -141,10 +139,6 @@ int vcs_MultiPhaseEquil::equilibrate_TV(int XY, doublereal xtarget,
     }
     throw CanteraError("vcs_MultiPhase::equilibrate_TV",
                        "No convergence for V");
-
-done:
-    ;
-    return iSuccess;
 }
 
 int vcs_MultiPhaseEquil::equilibrate_HP(doublereal Htarget,
@@ -241,7 +235,7 @@ int vcs_MultiPhaseEquil::equilibrate_HP(doublereal Htarget,
                     plogf("                   H rel error = %g, cp = %g, HConvErr = %g\n",
                           Herr, cpb, HConvErr);
                 }
-                goto done;
+                return iSuccess;
             }
             double Tnew = Tnow + dT;
             if (Tnew < 0.0) {
@@ -262,9 +256,6 @@ int vcs_MultiPhaseEquil::equilibrate_HP(doublereal Htarget,
     }
     throw CanteraError("MultiPhase::equilibrate_HP",
                        "No convergence for T");
-done:
-    ;
-    return iSuccess;
 }
 
 int vcs_MultiPhaseEquil::equilibrate_SP(doublereal Starget,

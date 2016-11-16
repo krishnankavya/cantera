@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 import interrupts
 
 # Need a pure-python class to store weakrefs to
@@ -568,9 +571,9 @@ cdef class Sim1D:
 
     def set_steady_callback(self, f):
         """
-        Set a callback function to be called after each successful timestep.
-        The signature of *f* is `float f(float)`. The argument passed to *f* is
-        "0" and the output is ignored.
+        Set a callback function to be called after each successful steady-state
+        solve, before regridding. The signature of *f* is `float f(float)`. The
+        argument passed to *f* is "0" and the output is ignored.
         """
         if not isinstance(f, Func1):
             f = Func1(f)
@@ -835,36 +838,47 @@ cdef class Sim1D:
 
         for N in nPoints:
             for i,D in enumerate(flow_domains):
+                if N > self.get_max_grid_points(D):
+                    raise CanteraError('Maximum number of grid points exceeded')
+
                 if N != len(D.grid):
                     D.grid = np.linspace(zmin[i], zmax[i], N)
 
             self.set_initial_guess(*self._initial_guess_args,
                                    **self._initial_guess_kwargs)
 
+            # Try solving with energy enabled, which usually works
+            log('Solving on {} point grid with energy equation enabled', N)
+            self.energy_enabled = True
             try:
-                # Try solving with energy enabled, which usually works
-                log('Solving on {} point grid with energy equation enabled', N)
-                self.energy_enabled = True
                 self.sim.solve(loglevel, <cbool>False)
                 solved = True
-            except Exception as e:
+            except CanteraError as e:
                 log(str(e))
                 solved = False
 
+            # If initial solve using energy equation fails, fall back on the
+            # traditional fixed temperature solve followed by solving the energy
+            # equation
             if not solved:
-                # If initial solve using energy equation fails, fall back on the
-                # traditional fixed temperature solve followed by solving the energy
-                # equation
                 log('Initial solve failed; Retrying with energy equation disabled')
+                self.energy_enabled = False
                 try:
-                    self.energy_enabled = False
-                    self.sim.solve(loglevel, <cbool>False)
-                    log('Solving on {} point grid with energy equation re-enabled', N)
-                    self.energy_enabled = True
                     self.sim.solve(loglevel, <cbool>False)
                     solved = True
-                except Exception as e:
+                except CanteraError as e:
                     log(str(e))
+                    solved = False
+
+                if solved:
+                    log('Solving on {} point grid with energy equation re-enabled', N)
+                    self.energy_enabled = True
+                    try:
+                        self.sim.solve(loglevel, <cbool>False)
+                        solved = True
+                    except CanteraError as e:
+                        log(str(e))
+                        solved = False
 
             if solved and not self.extinct():
                 # Found a non-extinct solution on the fixed grid
@@ -872,7 +886,7 @@ cdef class Sim1D:
                 try:
                     self.sim.solve(loglevel, <cbool>True)
                     solved = True
-                except Exception as e:
+                except CanteraError as e:
                     log(str(e))
                     solved = False
 
@@ -884,7 +898,7 @@ cdef class Sim1D:
                 log('Flame is extinct on {} point grid', N)
 
         if not solved:
-            raise Exception('Could not find a solution for the 1D problem')
+            raise CanteraError('Could not find a solution for the 1D problem')
 
         if solve_multi:
             log('Solving with multicomponent transport')
@@ -1053,6 +1067,70 @@ cdef class Sim1D:
         """
         self.sim.clearStats()
 
+    def solve_adjoint(self, perturb, n_params, dgdx, g=None, dp=1e-5):
+        r"""
+        Find the sensitivities of an objective function using an adjoint method.
+
+        For an objective function :math:`g(x, p)` where :math:`x` is the state
+        vector of the system and :math:`p` is a vector of parameters, this
+        computes the vector of sensitivities :math:`dg/dp`. This assumes that
+        the system of equations has already been solved to find :math:`x`.
+
+        :param perturb:
+            A function with the signature ``perturb(sim, i, dp)`` which
+            perturbs parameter ``i`` by a relative factor of ``dp``. To
+            perturb a reaction rate constant, this function could be defined
+            as::
+
+                def perturb(sim, i, dp):
+                    sim.gas.set_multiplier(1+dp, i)
+
+            Calling ``perturb(sim, i, 0)`` should restore that parameter to its
+            default value.
+        :param n_params:
+            The length of the vector of sensitivity parameters
+        :param dgdx:
+            The vector of partial derivatives of the function :math:`g(x, p)`
+            with respect to the system state :math:`x`.
+        :param g:
+            A function with the signature ``value = g(sim)`` which computes the
+            value of :math:`g(x,p)` at the current system state. This is used to
+            compute :math:`\partial g/\partial p`. If this is identically zero
+            (i.e. :math:`g` is independent of :math:`p`) then this argument may
+            be omitted.
+        :param dp:
+            A relative value by which to perturb each parameter
+        """
+        n_vars = self.sim.size()
+        cdef np.ndarray[np.double_t, ndim=1] L = np.empty(n_vars)
+        cdef np.ndarray[np.double_t, ndim=1] gg = \
+                np.ascontiguousarray(dgdx, dtype=np.double)
+
+        self.sim.solveAdjoint(&gg[0], &L[0])
+
+        cdef np.ndarray[np.double_t, ndim=1] dgdp = np.empty(n_params)
+        cdef np.ndarray[np.double_t, ndim=2] dfdp = np.empty((n_vars, n_params))
+        cdef np.ndarray[np.double_t, ndim=1] fplus = np.empty(n_vars)
+        cdef np.ndarray[np.double_t, ndim=1] fminus = np.empty(n_vars)
+        gplus = gminus = 0
+
+        for i in range(n_params):
+            perturb(self, i, dp)
+            if g:
+                gplus = g(self)
+            self.sim.getResidual(0, &fplus[0])
+
+            perturb(self, i, -dp)
+            if g:
+                gminus = g(self)
+            self.sim.getResidual(0, &fminus[0])
+
+            perturb(self, i, 0)
+            dgdp[i] = (gplus - gminus)/(2*dp)
+            dfdp[:,i] = (fplus - fminus) / (2*dp)
+
+        return dgdp - np.dot(L, dfdp)
+
     property grid_size_stats:
         """Return total grid size in each call to solve()"""
         def __get__(self):
@@ -1088,6 +1166,16 @@ cdef class Sim1D:
         """Return number of time steps taken in each call to solve()"""
         def __get__(self):
             return self.sim.timeStepStats()
+
+    def set_max_grid_points(self, domain, npmax):
+        """ Set the maximum number of grid points in the specified domain. """
+        idom = self.domain_index(domain)
+        self.sim.setMaxGridPoints(idom, npmax)
+
+    def get_max_grid_points(self, domain):
+        """ Get the maximum number of grid points in the specified domain. """
+        idom = self.domain_index(domain)
+        return self.sim.maxGridPoints(idom)
 
     def __dealloc__(self):
         del self.sim

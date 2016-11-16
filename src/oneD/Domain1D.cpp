@@ -2,6 +2,9 @@
  * @file Domain1D.cpp
  */
 
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/oneD/Domain1D.h"
 #include "cantera/oneD/MultiJac.h"
 #include "cantera/base/ctml.h"
@@ -22,7 +25,8 @@ Domain1D::Domain1D(size_t nv, size_t points, double time) :
     m_jstart(0),
     m_left(0),
     m_right(0),
-    m_bw(-1)
+    m_bw(-1),
+    m_force_full_update(false)
 {
     resize(nv, points);
 }

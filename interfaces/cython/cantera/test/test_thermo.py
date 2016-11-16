@@ -1,9 +1,11 @@
-from .utilities import unittest
+from os.path import join as pjoin
+import os
 import numpy as np
 import gc
 
 import cantera as ct
 from . import utilities
+
 
 class TestThermoPhase(utilities.CanteraTest):
     def setUp(self):
@@ -122,29 +124,29 @@ class TestThermoPhase(utilities.CanteraTest):
         self.assertEqual(list(X[0,:,0]), list(Y))
 
     def test_setCompositionString(self):
-        self.phase.X = 'H2:1.0, O2:1.0'
+        self.phase.X = 'h2:1.0, o2:1.0'
         X = self.phase.X
         self.assertNear(X[0], 0.5)
         self.assertNear(X[3], 0.5)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.phase.X = 'H2:1.0, CO2:1.5'
 
     def test_setCompositionStringBad(self):
         X0 = self.phase.X
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.phase.X = 'H2:1.0, O2:asdf'
         self.assertArrayNear(X0, self.phase.X)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.phase.X = 'H2:1e-x4'
         self.assertArrayNear(X0, self.phase.X)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.phase.X = 'H2:1e-1.4'
         self.assertArrayNear(X0, self.phase.X)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.phase.X = 'H2:0.5, O2:1.0, H2:0.1'
         self.assertArrayNear(X0, self.phase.X)
 
@@ -162,7 +164,7 @@ class TestThermoPhase(utilities.CanteraTest):
         self.assertNear(Y[3], 0.75)
 
     def test_getCompositionDict(self):
-        self.phase.X = 'OH:1e-9, O2:0.4, AR:0.6'
+        self.phase.X = 'oh:1e-9, O2:0.4, AR:0.6'
         self.assertEqual(len(self.phase.mole_fraction_dict(1e-7)), 2)
         self.assertEqual(len(self.phase.mole_fraction_dict()), 3)
 
@@ -195,15 +197,15 @@ class TestThermoPhase(utilities.CanteraTest):
             self.phase.set_unnormalized_mass_fractions([1,2,3])
 
     def test_setCompositionDict_bad1(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.phase.X = {'H2':1.0, 'HCl':3.0}
 
     def test_setCompositionDict_bad2(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(TypeError):
             self.phase.Y = {'H2':1.0, 'O2':'xx'}
 
     def test_setCompositionSlice(self):
-        self.phase['H2', 'O2'].X = 0.1, 0.9
+        self.phase['h2', 'o2'].X = 0.1, 0.9
         X = self.phase.X
         self.assertNear(X[0], 0.1)
         self.assertNear(X[3], 0.9)
@@ -397,7 +399,7 @@ class TestThermoPhase(utilities.CanteraTest):
             self.assertNear(getattr(self.phase, second), second_val)
 
     def test_setter_errors(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(TypeError):
             self.phase.TD = 400
 
         with self.assertRaises(AssertionError):
@@ -601,21 +603,21 @@ class TestThermoPhase(utilities.CanteraTest):
         ref = ct.Solution('gri30.xml')
 
         reactor = ct.IdealGasReactor(self.phase)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             self.phase.add_species(ref.species('CH4'))
         del reactor
         gc.collect()
         self.phase.add_species(ref.species('CH4'))
 
         flame = ct.FreeFlame(self.phase, width=0.1)
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             self.phase.add_species(ref.species('CO'))
         del flame
         gc.collect()
         self.phase.add_species(ref.species('CO'))
 
         mix = ct.Mixture([(self.phase, 2.0)])
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             self.phase.add_species(ref.species('CH2O'))
         del mix
         gc.collect()
@@ -623,7 +625,7 @@ class TestThermoPhase(utilities.CanteraTest):
 
     def test_add_species_duplicate(self):
         species = self.phase.species('H2O2')
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             self.phase.add_species(species)
 
 
@@ -645,6 +647,12 @@ class TestThermo(utilities.CanteraTest):
         self.assertNear(self.gas.s, s1)
         self.assertNear(self.gas.v, 3 * v1)
         self.assertTrue(self.gas.T < self.gas.min_temp)
+
+    def test_setSV_low_invalid(self):
+        self.gas.TPX = 450, 1e5, 'H2:1.0, O2:0.4, AR:3'
+        self.gas.SV = 4600, None
+        with self.assertRaises(ct.CanteraError):
+            self.gas.SV = -1000, None
 
     def test_setSV_highT(self):
         """
@@ -675,6 +683,16 @@ class TestThermo(utilities.CanteraTest):
         self.assertNear(self.gas.P, p1)
         self.assertTrue(self.gas.T < self.gas.min_temp)
 
+    def test_setHP_low_invalid(self):
+        """
+        Set state in terms of (h,p) when the enthalpy would imply a negative
+        temperature
+        """
+
+        self.gas.TPX = 300, 101325, 'H2:1.0'
+        with self.assertRaises(ct.CanteraError):
+            self.gas.HP = -4e6, 101325
+
     def test_setHP_highT(self):
         """
         Set state in terms of (s,v) when the end temperature is above the
@@ -691,7 +709,9 @@ class TestThermo(utilities.CanteraTest):
         self.assertTrue(self.gas.T > self.gas.max_temp)
 
     def test_volume(self):
-        """ This phase should follow the ideal gas law """
+        """
+        This phase should follow the ideal gas law
+        """
         g = self.gas
         self.assertNear(g.P, g.density_mole * ct.gas_constant * g.T)
 
@@ -777,22 +797,22 @@ class ImportTest(utilities.CanteraTest):
         self.assertEqual(gas.n_elements, nElem)
 
     def test_import_phase_cti(self):
-        gas1 = ct.Solution('../data/air-no-reactions.cti', 'air')
+        gas1 = ct.Solution('air-no-reactions.cti', 'air')
         self.check(gas1, 'air', 300, 101325, 8, 3)
 
-        gas2 = ct.Solution('../data/air-no-reactions.cti', 'notair')
+        gas2 = ct.Solution('air-no-reactions.cti', 'notair')
         self.check(gas2, 'notair', 900, 5*101325, 7, 2)
 
     def test_import_phase_cti2(self):
         # This should import the first phase, i.e. 'air'
-        gas = ct.Solution('../data/air-no-reactions.cti')
+        gas = ct.Solution('air-no-reactions.cti')
         self.check(gas, 'air', 300, 101325, 8, 3)
 
     def test_import_phase_xml(self):
-        gas1 = ct.Solution('../data/air-no-reactions.xml', 'air')
+        gas1 = ct.Solution('air-no-reactions.xml', 'air')
         self.check(gas1, 'air', 300, 101325, 8, 3)
 
-        gas2 = ct.Solution('../data/air-no-reactions.xml', 'notair')
+        gas2 = ct.Solution('air-no-reactions.xml', 'notair')
         self.check(gas2, 'notair', 900, 5*101325, 7, 2)
 
     def test_import_phase_cti_text(self):
@@ -842,8 +862,8 @@ ideal_gas(name='spam', elements='O H',
         self.assertArrayNear(gas1.X, gas2.X)
 
     def test_checkReactionBalance(self):
-        with self.assertRaises(Exception):
-            ct.Solution('../data/h2o2_unbalancedReaction.xml')
+        with self.assertRaises(ct.CanteraError):
+            ct.Solution('h2o2_unbalancedReaction.xml')
 
 
 class TestSpecies(utilities.CanteraTest):
@@ -914,7 +934,8 @@ class TestSpecies(utilities.CanteraTest):
 
     def test_fromXml(self):
         import xml.etree.ElementTree as ET
-        root = ET.parse('../../build/data/h2o2.xml').getroot()
+        p = os.path.dirname(__file__)
+        root = ET.parse(pjoin(p, '..', 'data', 'h2o2.xml')).getroot()
         h2_node = root.find('.//species[@name="H2"]')
         h2_string = ET.tostring(h2_node)
 
@@ -936,14 +957,16 @@ class TestSpecies(utilities.CanteraTest):
                          set(self.gas.species_names))
 
     def test_listFromCti(self):
-        with open('../../build/data/h2o2.cti') as f:
+        p = os.path.dirname(__file__)
+        with open(pjoin(p, '..', 'data', 'h2o2.cti')) as f:
             S = ct.Species.listFromCti(f.read())
 
         self.assertEqual({sp.name for sp in S},
                          set(self.gas.species_names))
 
     def test_listFromXml(self):
-        with open('../../build/data/h2o2.xml') as f:
+        p = os.path.dirname(__file__)
+        with open(pjoin(p, '..', 'data', 'h2o2.xml')) as f:
             S = ct.Species.listFromXml(f.read())
 
         self.assertEqual({sp.name for sp in S},
@@ -968,24 +991,24 @@ class TestSpecies(utilities.CanteraTest):
         thermo = orig.thermo
         copy = ct.Species('foobar', orig.composition)
         copy.thermo = thermo
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.gas.modify_species(self.gas.species_index('H2'), copy)
 
         copy = ct.Species('H2', {'H': 3})
         copy.thermo = thermo
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.gas.modify_species(self.gas.species_index('H2'), copy)
 
         copy = ct.Species('H2', orig.composition)
         copy.thermo = ct.ConstantCp(thermo.min_temp, thermo.max_temp,
             thermo.reference_pressure, [300, 123, 456, 789])
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.gas.modify_species(self.gas.species_index('H2'), copy)
 
         copy = ct.Species('H2', orig.composition)
         copy.thermo = ct.NasaPoly2(thermo.min_temp+200, thermo.max_temp,
             thermo.reference_pressure, thermo.coeffs)
-        with self.assertRaises(Exception):
+        with self.assertRaises(ct.CanteraError):
             self.gas.modify_species(self.gas.species_index('H2'), copy)
 
 
@@ -1037,6 +1060,7 @@ class TestSpeciesThermo(utilities.CanteraTest):
 class TestQuantity(utilities.CanteraTest):
     @classmethod
     def setUpClass(cls):
+        utilities.CanteraTest.setUpClass()
         cls.gas = ct.Solution('gri30.xml')
 
     def setUp(self):
@@ -1117,7 +1141,7 @@ class TestQuantity(utilities.CanteraTest):
         q1 = ct.Quantity(self.gas)
         q2 = ct.Quantity(gas2)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             q1+q2
 
 
@@ -1130,6 +1154,7 @@ class TestMisc(utilities.CanteraTest):
 class TestElement(utilities.CanteraTest):
     @classmethod
     def setUpClass(cls):
+        utilities.CanteraTest.setUpClass()
         cls.ar_sym = ct.Element('Ar')
         cls.ar_name = ct.Element('argon')
         cls.ar_num = ct.Element(18)
@@ -1160,16 +1185,16 @@ class TestElement(utilities.CanteraTest):
         self.assertEqual(self.ar_num.atomic_number, 18)
 
     def test_element_name_not_present(self):
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             ct.Element('I am not an element')
 
     def test_element_atomic_number_small(self):
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             ct.Element(0)
 
     def test_element_atomic_number_big(self):
         num_elements = ct.Element.num_elements_defined
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ct.CanteraError):
             ct.Element(num_elements + 1)
 
     def test_element_bad_input(self):
@@ -1196,9 +1221,11 @@ class TestElement(utilities.CanteraTest):
         self.assertEqual(len(syms), num_elements)
         self.assertEqual(len(names), num_elements)
 
+
 class TestSolutionArray(utilities.CanteraTest):
     @classmethod
     def setUpClass(cls):
+        utilities.CanteraTest.setUpClass()
         cls.gas = ct.Solution('h2o2.xml')
 
     def test_passthrough(self):
@@ -1360,7 +1387,7 @@ class TestSolutionArray(utilities.CanteraTest):
         states.TPX = np.linspace(300, 1000, 7), 2e5, 'H2:0.5, O2:0.4'
         states.equilibrate('HP')
 
-        outfile = 'solutionarray{}.csv'.format(utilities.python_version)
+        outfile = pjoin(self.test_work_dir, 'solutionarray{}.csv'.format(utilities.python_version))
         states.write_csv(outfile)
 
         data = np.genfromtxt(outfile, names=True, delimiter=',')

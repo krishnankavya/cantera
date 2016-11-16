@@ -5,11 +5,9 @@
  *  ( see \ref thermoprops and class \link Cantera::SingleSpeciesTP SingleSpeciesTP\endlink).
  */
 
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/thermo/SingleSpeciesTP.h"
 #include "cantera/base/stringUtils.h"
 #include "cantera/base/global.h"
@@ -217,7 +215,7 @@ void SingleSpeciesTP::setState_HP(doublereal h, doublereal p,
     for (int n = 0; n < 50; n++) {
         dt = clip((h - enthalpy_mass())/cp_mass(), -100.0, 100.0);
         setState_TP(temperature() + dt, p);
-        if (fabs(dt) < tol) {
+        if (fabs(dt / temperature()) < tol) {
             return;
         }
     }
@@ -236,7 +234,7 @@ void SingleSpeciesTP::setState_UV(doublereal u, doublereal v,
     for (int n = 0; n < 50; n++) {
         dt = clip((u - intEnergy_mass())/cv_mass(), -100.0, 100.0);
         setTemperature(temperature() + dt);
-        if (fabs(dt) < tol) {
+        if (fabs(dt / temperature()) < tol) {
             return;
         }
     }
@@ -252,7 +250,7 @@ void SingleSpeciesTP::setState_SP(doublereal s, doublereal p,
     for (int n = 0; n < 50; n++) {
         dt = clip((s - entropy_mass())*temperature()/cp_mass(), -100.0, 100.0);
         setState_TP(temperature() + dt, p);
-        if (fabs(dt) < tol) {
+        if (fabs(dt / temperature()) < tol) {
             return;
         }
     }
@@ -271,7 +269,7 @@ void SingleSpeciesTP::setState_SV(doublereal s, doublereal v,
     for (int n = 0; n < 50; n++) {
         dt = clip((s - entropy_mass())*temperature()/cv_mass(), -100.0, 100.0);
         setTemperature(temperature() + dt);
-        if (fabs(dt) < tol) {
+        if (fabs(dt / temperature()) < tol) {
             return;
         }
     }

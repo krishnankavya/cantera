@@ -5,7 +5,8 @@
  * (see class \link Cantera::ThermoPhase ThermoPhase\endlink).
  */
 
-//  Copyright 2002 California Institute of Technology
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/ThermoPhase.h"
 #include "cantera/base/stringUtils.h"
@@ -240,15 +241,14 @@ void ThermoPhase::setState_PY(doublereal p, doublereal* y)
     setPressure(p);
 }
 
-void ThermoPhase::setState_HP(doublereal Htarget, doublereal p,
-                              doublereal dTtol)
+void ThermoPhase::setState_HP(double Htarget, double p, double rtol)
 {
-    setState_HPorUV(Htarget, p, dTtol, false);
+    setState_HPorUV(Htarget, p, rtol, false);
 }
 
-void ThermoPhase::setState_UV(doublereal u, doublereal v, doublereal dTtol)
+void ThermoPhase::setState_UV(double u, double v, double rtol)
 {
-    setState_HPorUV(u, v, dTtol, true);
+    setState_HPorUV(u, v, rtol, true);
 }
 
 void ThermoPhase::setState_conditional_TP(doublereal t, doublereal p, bool set_p)
@@ -259,8 +259,8 @@ void ThermoPhase::setState_conditional_TP(doublereal t, doublereal p, bool set_p
     }
 }
 
-void ThermoPhase::setState_HPorUV(doublereal Htarget, doublereal p,
-                                  doublereal dTtol, bool doUV)
+void ThermoPhase::setState_HPorUV(double Htarget, double p,
+                                  double rtol, bool doUV)
 {
     doublereal dt;
     doublereal v = 0.0;
@@ -408,9 +408,9 @@ void ThermoPhase::setState_HPorUV(doublereal Htarget, doublereal p,
         // Convergence in H
         double Herr = Htarget - Hnew;
         double acpd = std::max(fabs(cpd), 1.0E-5);
-        double denom = std::max(fabs(Htarget), acpd * dTtol);
+        double denom = std::max(fabs(Htarget), acpd * Tnew);
         double HConvErr = fabs((Herr)/denom);
-        if (HConvErr < 0.00001 *dTtol || fabs(dt) < dTtol) {
+        if (HConvErr < rtol || fabs(dt/Tnew) < rtol) {
             return;
         }
     }
@@ -450,20 +450,18 @@ void ThermoPhase::setState_HPorUV(doublereal Htarget, doublereal p,
     }
 }
 
-void ThermoPhase::setState_SP(doublereal Starget, doublereal p,
-                              doublereal dTtol)
+void ThermoPhase::setState_SP(double Starget, double p, double rtol)
 {
-    setState_SPorSV(Starget, p, dTtol, false);
+    setState_SPorSV(Starget, p, rtol, false);
 }
 
-void ThermoPhase::setState_SV(doublereal Starget, doublereal v,
-                              doublereal dTtol)
+void ThermoPhase::setState_SV(double Starget, double v, double rtol)
 {
-    setState_SPorSV(Starget, v, dTtol, true);
+    setState_SPorSV(Starget, v, rtol, true);
 }
 
-void ThermoPhase::setState_SPorSV(doublereal Starget, doublereal p,
-                                  doublereal dTtol, bool doSV)
+void ThermoPhase::setState_SPorSV(double Starget, double p,
+                                  double rtol, bool doSV)
 {
     doublereal v = 0.0;
     doublereal dt;
@@ -594,9 +592,9 @@ void ThermoPhase::setState_SPorSV(doublereal Starget, doublereal p,
         // Convergence in S
         double Serr = Starget - Snew;
         double acpd = std::max(fabs(cpd), 1.0E-5);
-        double denom = std::max(fabs(Starget), acpd * dTtol);
+        double denom = std::max(fabs(Starget), acpd * Tnew);
         double SConvErr = fabs((Serr * Tnew)/denom);
-        if (SConvErr < 0.00001 *dTtol || fabs(dt) < dTtol) {
+        if (SConvErr < rtol || fabs(dt/Tnew) < rtol) {
             return;
         }
     }
@@ -637,6 +635,8 @@ void ThermoPhase::setState_SPorSV(doublereal Starget, doublereal p,
 
 void ThermoPhase::setSpeciesThermo(MultiSpeciesThermo* spthermo)
 {
+    warn_deprecated("ThermoPhase::setSpeciesThermo",
+                    "Unused. To be removed after Cantera 2.3.");
     if (m_spthermo && m_spthermo != spthermo) {
         delete m_spthermo;
     }
@@ -714,6 +714,10 @@ void ThermoPhase::installSlavePhases(XML_Node* phaseNode)
 
 bool ThermoPhase::addSpecies(shared_ptr<Species> spec)
 {
+    if (!spec->thermo) {
+        throw CanteraError("ThermoPhase::addSpecies",
+            "Species {} has no thermo data", spec->name);
+    }
     bool added = Phase::addSpecies(spec);
     if (added) {
         spec->thermo->validate(spec->name);
@@ -725,6 +729,10 @@ bool ThermoPhase::addSpecies(shared_ptr<Species> spec)
 
 void ThermoPhase::modifySpecies(size_t k, shared_ptr<Species> spec)
 {
+    if (!spec->thermo) {
+        throw CanteraError("ThermoPhase::modifySpecies",
+            "Species {} has no thermo data", spec->name);
+    }
     Phase::modifySpecies(k, spec);
     if (speciesName(k) != spec->name) {
         throw CanteraError("ThermoPhase::modifySpecies",

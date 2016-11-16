@@ -10,11 +10,10 @@
  * further based upon expressions for the excess Gibbs free energy expressed as
  * a function of the mole fractions.
  */
-/*
- * Copyright (2009) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/thermo/MolarityIonicVPSSTP.h"
 #include "cantera/thermo/ThermoFactory.h"
 #include "cantera/base/stringUtils.h"
@@ -318,11 +317,11 @@ void MolarityIonicVPSSTP::initThermoXML(XML_Node& phaseNode, const std::string& 
                            "no thermo XML node");
     }
     XML_Node& thermoNode = phaseNode.child("thermo");
-    std::string mStringa = thermoNode.attrib("model");
-    std::string mString = lowercase(mStringa);
-    if (mString != "molarityionicvpss" && mString != "molarityionicvpsstp") {
+    if (!ba::iequals(thermoNode["model"], "molarityionicvpss")
+        && !ba::iequals(thermoNode["model"], "molarityionicvpsstp")) {
         throw CanteraError("MolarityIonicVPSSTP::initThermoXML",
-                           "Unknown thermo model: " + mStringa + " - This object only knows \"MolarityIonicVPSSTP\" ");
+                           "Unknown thermo model: " + thermoNode["model"]
+                           + " - This object only knows \"MolarityIonicVPSSTP\" ");
     }
 
     // Go get all of the coefficients and factors in the activityCoefficients
@@ -332,7 +331,7 @@ void MolarityIonicVPSSTP::initThermoXML(XML_Node& phaseNode, const std::string& 
         for (size_t i = 0; i < acNode.nChildren(); i++) {
             XML_Node& xmlACChild = acNode.child(i);
             // Process a binary interaction
-            if (lowercase(xmlACChild.name()) == "binaryneutralspeciesparameters") {
+            if (ba::iequals(xmlACChild.name(), "binaryneutralspeciesparameters")) {
                 readXMLBinarySpecies(xmlACChild);
             }
         }

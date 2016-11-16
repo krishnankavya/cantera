@@ -12,7 +12,9 @@
  *     -  logs        (see \ref logs)
  *     -  textlogs    (see \ref textlogs)
  */
-// Copyright 2001  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #ifndef CT_GLOBAL_H
 #define CT_GLOBAL_H
@@ -112,6 +114,9 @@ std::string findInputFile(const std::string& name);
 
 //! @copydoc Application::addDataDirectory
 void addDirectory(const std::string& dir);
+
+//! @copydoc Application::getDataDirectories
+std::string getDataDirectories(const std::string& sep);
 //@}
 
 //! Delete and free all memory associated with the application
@@ -188,7 +193,7 @@ void writelog(const std::string& fmt, const Args&... args) {
  * and then feed it into writelog().
  *
  * @param fmt  c format string for the following arguments
- * #param args arguments used to interpolate the format string
+ * @param args arguments used to interpolate the format string
  * @ingroup textlogs
  */
 template <typename... Args>

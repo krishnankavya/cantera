@@ -3,7 +3,9 @@
  * Contains definitions for string manipulation functions
  *       within Cantera.
  */
-// Copyright 2001  California Institute of Technology
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 //@{
 #include "cantera/base/ct_defs.h"
@@ -20,8 +22,11 @@
 #include "cantera/base/ctml.h"
 #include "cantera/base/utilities.h"
 
+#include <boost/algorithm/string.hpp>
 #include <sstream>
 #include <cstdio>
+
+namespace ba = boost::algorithm;
 
 namespace Cantera
 {
@@ -79,6 +84,8 @@ std::string vec2str(const vector_fp& v, const std::string& fmt,
 
 std::string lowercase(const std::string& s)
 {
+    warn_deprecated("lowercase", "Use boost::algorithm::to_lower_copy instead. "
+                    "To be removed after Cantera 2.3.");
     std::string lc(s);
     for (size_t i = 0; i < s.size(); i++) {
         lc[i] = (char) tolower(s[i]);
@@ -86,47 +93,11 @@ std::string lowercase(const std::string& s)
     return lc;
 }
 
-//! Return the position of the first printable character in the string
-/*!
- *    @param  s    input string
- *    @returns     an int representing the first printable string. If
- *                 none returns the size of the string.
- */
-static int firstChar(const std::string& s)
-{
-    int i;
-    int n = static_cast<int>(s.size());
-    for (i = 0; i < n; i++) {
-        if (s[i] != ' ' && isprint(s[i])) {
-            break;
-        }
-    }
-    return i;
-}
-
-//! Return the position of the last printable character in the string
-/*!
- *    @param  s    input string
- *    @returns     an int representing the first printable string. If
- *                 none returns -1.
- */
-static int lastChar(const std::string& s)
-{
-    int i;
-    int n = static_cast<int>(s.size());
-    for (i = n-1; i >= 0; i--) {
-        if (s[i] != ' ' && isprint(s[i])) {
-            break;
-        }
-    }
-    return i;
-}
-
 std::string stripws(const std::string& s)
 {
-    int ifirst = firstChar(s);
-    int ilast = lastChar(s);
-    return s.substr(ifirst, ilast - ifirst + 1);
+    warn_deprecated("stripws", "Use boost::algorithm::trim_copy instead. "
+                    "To be removed after Cantera 2.3.");
+    return ba::trim_copy(s);
 }
 
 std::string stripnonprint(const std::string& s)
@@ -157,7 +128,7 @@ compositionMap parseCompString(const std::string& ss,
         }
         size_t valstart = ss.find_first_not_of(" \t\n", colon+1);
         stop = ss.find_first_of(", ;\n\t", valstart);
-        std::string name = stripws(ss.substr(start, colon-start));
+        std::string name = ba::trim_copy(ss.substr(start, colon-start));
         if (!names.empty() && x.find(name) == x.end()) {
             throw CanteraError("parseCompString",
                 "unknown species '" + name + "'");
@@ -169,7 +140,7 @@ compositionMap parseCompString(const std::string& ss,
         x[name] = fpValueCheck(ss.substr(valstart, stop-colon-1));
         start = ss.find_first_not_of(", ;\n\t", stop+1);
     }
-    if (stop != npos && !stripws(ss.substr(stop)).empty()) {
+    if (stop != npos && !ba::trim_copy(ss.substr(stop)).empty()) {
         throw CanteraError("parseCompString", "Found non-key:value data "
             "in composition string: '" + ss.substr(stop) + "'");
     }
@@ -178,7 +149,7 @@ compositionMap parseCompString(const std::string& ss,
 
 int intValue(const std::string& val)
 {
-    return std::atoi(stripws(val).c_str());
+    return std::atoi(ba::trim_copy(val).c_str());
 }
 
 doublereal fpValue(const std::string& val)
@@ -192,7 +163,7 @@ doublereal fpValue(const std::string& val)
 
 doublereal fpValueCheck(const std::string& val)
 {
-    std::string str = stripws(val);
+    std::string str = ba::trim_copy(val);
     if (str.empty()) {
         throw CanteraError("fpValueCheck", "string has zero length");
     }
@@ -238,6 +209,7 @@ doublereal fpValueCheck(const std::string& val)
 
 std::string wrapString(const std::string& s, const int len)
 {
+    warn_deprecated("wrapString", "Unused. To be removed after Cantera 2.3.");
     int count=0;
     std::string r;
     for (size_t n = 0; n < s.size(); n++) {
@@ -257,7 +229,7 @@ std::string wrapString(const std::string& s, const int len)
 
 std::string parseSpeciesName(const std::string& nameStr, std::string& phaseName)
 {
-    std::string s = stripws(nameStr);
+    std::string s = ba::trim_copy(nameStr);
     phaseName = "";
     size_t ibegin = s.find_first_not_of(" ;\n\t");
     if (ibegin != std::string::npos) {
@@ -296,82 +268,28 @@ doublereal strSItoDbl(const std::string& strSI)
     return val * fp;
 }
 
-//!  Find the first white space in a string
-/*!
- *   Returns the location of the first white space character in a string
- *
- *   @param   val    Input string to be parsed
- *   @return  In a size_type variable, return the location of the first white
- *             space character. Return npos if none is found
- */
-static std::string::size_type findFirstWS(const std::string& val)
+void tokenizeString(const std::string& in_val, std::vector<std::string>& v)
 {
-    std::string::size_type ibegin = std::string::npos;
-    int j = 0;
-    for (const auto& ch : val) {
-        if (isspace(static_cast<int>(ch))) {
-            ibegin = (std::string::size_type) j;
-            break;
-        }
-        j++;
-    }
-    return ibegin;
-}
-
-//!  Find the first non-white space in a string
-/*!
- *   Returns the location of the first non-white space character in a string
- *
- *   @param   val    Input string to be parsed
- *   @return  In a size_type variable, return the location of the first
- *             nonwhite space character. Return npos if none is found
- */
-static std::string::size_type findFirstNotOfWS(const std::string& val)
-{
-    std::string::size_type ibegin = std::string::npos;
-    int j = 0;
-    for (const auto& ch : val) {
-        if (!isspace(static_cast<int>(ch))) {
-            ibegin = (std::string::size_type) j;
-            break;
-        }
-        j++;
-    }
-    return ibegin;
-}
-
-void tokenizeString(const std::string& oval,
-                    std::vector<std::string>& v)
-{
-    std::string val(oval);
-    std::string::size_type ibegin, iend;
+    std::string val = ba::trim_copy(in_val);
     v.clear();
-    while (true) {
-        ibegin = findFirstNotOfWS(val);
-        if (ibegin != std::string::npos) {
-            val = val.substr(ibegin,val.size());
-            iend = findFirstWS(val);
-            if (iend == std::string::npos) {
-                v.push_back(val);
-                break;
-            } else {
-                v.push_back(val.substr(0,iend));
-                val = val.substr(iend+1,val.size());
-            }
-        } else {
-            break;
-        }
+    if (val.empty()) {
+        // In this case, prefer v to be empty instead of split's behavior of
+        // returning a vector with one element that is the empty string.
+        return;
     }
+    ba::split(v, val, ba::is_space(), ba::token_compress_on);
 }
 
-void copyString(const std::string& source, char* dest, size_t length)
+size_t copyString(const std::string& source, char* dest, size_t length)
 {
     const char* c_src = source.c_str();
     size_t N = std::min(length, source.length()+1);
+    size_t ret = (length >= source.length() + 1) ? 0 : source.length() + 1;
     std::copy(c_src, c_src + N, dest);
     if (length != 0) {
         dest[length-1] = '\0';
     }
+    return ret;
 }
 
 }

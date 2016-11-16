@@ -1,19 +1,18 @@
 //! @file RedlichKwongMFTP.cpp
 
-/*
- * Copyright (2005) Sandia Corporation. Under the terms of
- * Contract DE-AC04-94AL85000 with Sandia Corporation, the
- * U.S. Government retains certain rights in this software.
- */
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
 
 #include "cantera/thermo/RedlichKwongMFTP.h"
 #include "cantera/thermo/mix_defs.h"
 #include "cantera/thermo/ThermoFactory.h"
-#include "cantera/numerics/RootFind.h"
 #include "cantera/base/stringUtils.h"
 #include "cantera/base/ctml.h"
 
+#include <boost/math/tools/roots.hpp>
+
 using namespace std;
+namespace bmt = boost::math::tools;
 
 namespace Cantera
 {
@@ -597,9 +596,7 @@ void RedlichKwongMFTP::initThermoXML(XML_Node& phaseNode, const std::string& id)
             // parameters
             for (size_t i = 0; i < nC; i++) {
                 XML_Node& xmlACChild = acNodePtr->child(i);
-                string stemp = xmlACChild.name();
-                string nodeName = lowercase(stemp);
-                if (nodeName == "purefluidparameters") {
+                if (ba::iequals(xmlACChild.name(), "purefluidparameters")) {
                     readXMLPureFluid(xmlACChild);
                 }
             }
@@ -611,9 +608,7 @@ void RedlichKwongMFTP::initThermoXML(XML_Node& phaseNode, const std::string& id)
             // parameters
             for (size_t i = 0; i < nC; i++) {
                 XML_Node& xmlACChild = acNodePtr->child(i);
-                string stemp = xmlACChild.name();
-                string nodeName = lowercase(stemp);
-                if (nodeName == "crossfluidparameters") {
+                if (ba::iequals(xmlACChild.name(), "crossfluidparameters")) {
                     readXMLCrossFluid(xmlACChild);
                 }
             }
@@ -655,11 +650,10 @@ void RedlichKwongMFTP::readXMLPureFluid(XML_Node& pureFluidParam)
     size_t num = pureFluidParam.nChildren();
     for (size_t iChild = 0; iChild < num; iChild++) {
         XML_Node& xmlChild = pureFluidParam.child(iChild);
-        string stemp = xmlChild.name();
-        string nodeName = lowercase(stemp);
+        string nodeName = ba::to_lower_copy(xmlChild.name());
 
         if (nodeName == "a_coeff") {
-            string iModel = lowercase(xmlChild.attrib("model"));
+            string iModel = ba::to_lower_copy(xmlChild.attrib("model"));
             if (iModel == "constant") {
                 nParamsExpected = 1;
             } else if (iModel == "linear_a") {
@@ -744,11 +738,10 @@ void RedlichKwongMFTP::readXMLCrossFluid(XML_Node& CrossFluidParam)
     size_t num = CrossFluidParam.nChildren();
     for (size_t iChild = 0; iChild < num; iChild++) {
         XML_Node& xmlChild = CrossFluidParam.child(iChild);
-        string stemp = xmlChild.name();
-        string nodeName = lowercase(stemp);
+        string nodeName = ba::to_lower_copy(xmlChild.name());
 
         if (nodeName == "a_coeff") {
-            string iModel = lowercase(xmlChild.attrib("model"));
+            string iModel = ba::to_lower_copy(xmlChild.attrib("model"));
             if (iModel == "constant") {
                 nParamsExpected = 1;
             } else if (iModel == "linear_a") {
@@ -908,46 +901,46 @@ doublereal RedlichKwongMFTP::densityCalc(doublereal TKelvin, doublereal presPa, 
 
 doublereal RedlichKwongMFTP::densSpinodalLiquid() const
 {
-    if (NSolns_ != 3) {
+    double Vroot[3];
+    double T = temperature();
+    int nsol = NicholsSolve(T, pressure(), m_a_current, m_b_current, Vroot);
+    if (nsol != 3) {
         return critDensity();
     }
-    double vmax = Vroot_[1];
-    double vmin = Vroot_[0];
-    RootFind rf(fdpdv_);
-    rf.setPrintLvl(10);
-    rf.setTol(1.0E-5, 1.0E-10);
-    rf.setFuncIsGenerallyDecreasing(true);
 
-    double vbest = 0.5 * (Vroot_[0]+Vroot_[1]);
-    double funcNeeded = 0.0;
-    int status = rf.solve(vmin, vmax, 100, funcNeeded, &vbest);
-    if (status != ROOTFIND_SUCCESS) {
-        throw CanteraError("  RedlichKwongMFTP::densSpinodalLiquid() ", "didn't converge");
-    }
+    auto resid = [this, T](double v) {
+        double pp;
+        return dpdVCalc(T, v, pp);
+    };
+
+    boost::uintmax_t maxiter = 100;
+    std::pair<double, double> vv = bmt::toms748_solve(
+        resid, Vroot[0], Vroot[1], bmt::eps_tolerance<double>(48), maxiter);
+
     doublereal mmw = meanMolecularWeight();
-    return mmw / vbest;
+    return mmw / (0.5 * (vv.first + vv.second));
 }
 
 doublereal RedlichKwongMFTP::densSpinodalGas() const
 {
-    if (NSolns_ != 3) {
+    double Vroot[3];
+    double T = temperature();
+    int nsol = NicholsSolve(T, pressure(), m_a_current, m_b_current, Vroot);
+    if (nsol != 3) {
         return critDensity();
     }
-    double vmax = Vroot_[2];
-    double vmin = Vroot_[1];
-    RootFind rf(fdpdv_);
-    rf.setPrintLvl(10);
-    rf.setTol(1.0E-5, 1.0E-10);
-    rf.setFuncIsGenerallyIncreasing(true);
 
-    double vbest = 0.5 * (Vroot_[1]+Vroot_[2]);
-    double funcNeeded = 0.0;
-    int status = rf.solve(vmin, vmax, 100, funcNeeded, &vbest);
-    if (status != ROOTFIND_SUCCESS) {
-        throw CanteraError(" RedlichKwongMFTP::densSpinodalGas() ", "didn't converge");
-    }
+    auto resid = [this, T](double v) {
+        double pp;
+        return dpdVCalc(T, v, pp);
+    };
+
+    boost::uintmax_t maxiter = 100;
+    std::pair<double, double> vv = bmt::toms748_solve(
+        resid, Vroot[1], Vroot[2], bmt::eps_tolerance<double>(48), maxiter);
+
     doublereal mmw = meanMolecularWeight();
-    return mmw / vbest;
+    return mmw / (0.5 * (vv.first + vv.second));
 }
 
 doublereal RedlichKwongMFTP::pressureCalc(doublereal TKelvin, doublereal molarVol) const

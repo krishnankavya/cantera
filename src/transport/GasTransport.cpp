@@ -1,4 +1,8 @@
 //! @file GasTransport.cpp
+
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include "cantera/transport/GasTransport.h"
 #include "MMCollisionInt.h"
 #include "cantera/base/stringUtils.h"
@@ -251,14 +255,10 @@ void GasTransport::getMixDiffCoeffs(doublereal* const d)
     }
 
     doublereal mmw = m_thermo->meanMolecularWeight();
-    doublereal sumxw = 0.0;
     doublereal p = m_thermo->pressure();
     if (m_nsp == 1) {
         d[0] = m_bdiff(0,0) / p;
     } else {
-        for (size_t k = 0; k < m_nsp; k++) {
-            sumxw += m_molefracs[k] * m_mw[k];
-        }
         for (size_t k = 0; k < m_nsp; k++) {
             double sum2 = 0.0;
             for (size_t j = 0; j < m_nsp; j++) {
@@ -269,7 +269,7 @@ void GasTransport::getMixDiffCoeffs(doublereal* const d)
             if (sum2 <= 0.0) {
                 d[k] = m_bdiff(k,k) / p;
             } else {
-                d[k] = (sumxw - m_molefracs[k] * m_mw[k])/(p * mmw * sum2);
+                d[k] = (mmw - m_molefracs[k] * m_mw[k])/(p * mmw * sum2);
             }
         }
     }

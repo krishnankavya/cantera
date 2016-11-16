@@ -1,3 +1,6 @@
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at http://www.cantera.org/license.txt for license and copyright information.
+
 import warnings
 import weakref
 
@@ -458,7 +461,7 @@ cdef class ThermoPhase(_SolutionBase):
         automatically.
         """
         if self._references:
-            raise RuntimeError('Cannot add species to ThermoPhase object if it'
+            raise CanteraError('Cannot add species to ThermoPhase object if it'
                 ' is linked to a Reactor, Domain1D (flame), or Mixture object.')
         self.thermo.addUndefinedElements()
         self.thermo.addSpecies(species._species)

@@ -1,9 +1,12 @@
+// This file is part of Cantera. See License.txt in the top-level directory or
+// at http://www.cantera.org/license.txt for license and copyright information.
+
 #include <iostream>
 #include <string>
 #include <vector>
 
 #include "ctmatutils.h"
-#include "clib/ctonedim.h"
+#include "cantera/clib/ctonedim.h"
 
 using namespace std;
 
@@ -181,9 +184,11 @@ void onedimmethods(int nlhs, mxArray* plhs[],
         switch (job) {
         case 40:
             icomp = getInt(prhs[3]) - 1;
-            buflen = 40;
-            output_buf = (char*)mxCalloc(buflen, sizeof(char));
-            iok = domain_componentName(dom, icomp, buflen, output_buf);
+            buflen = domain_componentName(dom, icomp, 0, 0);
+            if (buflen > 0) {
+                output_buf = (char*) mxCalloc(buflen, sizeof(char));
+                iok = domain_componentName(dom, icomp, buflen, output_buf);
+            }
             break;
         default:
             iok = -1;
