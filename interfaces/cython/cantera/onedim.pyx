@@ -224,13 +224,6 @@ cdef class Domain1D:
         def __set__(self, name):
             self.domain.setID(stringify(name))
 
-    property description:
-        """ A description of this domain """
-        def __get__(self):
-            return pystr(self.domain.desc())
-        def __set__(self, desc):
-            self.domain.setDesc(stringify(desc))
-
     def __reduce__(self):
         raise NotImplementedError('Domain1D object is not picklable')
 
@@ -649,9 +642,20 @@ cdef class Sim1D:
         dom, comp = self._get_indices(domain, component)
         self.sim.setValue(dom, comp, point, value)
 
+    def eval(self, rdt=0.0):
+        """
+        Evaluate the governing equations using the current solution estimate,
+        storing the residual in the array which is accessible with the
+        `work_value` function.
+
+        :param rdt:
+           Reciprocal of the time-step
+        """
+        self.sim.eval(rdt)
+
     def work_value(self, domain, component, point):
         """
-        Internal work array value at one point. After calling eval, this array
+        Internal work array value at one point. After calling `eval`, this array
         contains the values of the residual function.
 
         :param domain:

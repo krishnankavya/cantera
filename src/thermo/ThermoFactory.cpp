@@ -12,10 +12,9 @@
 #include "cantera/thermo/Species.h"
 #include "cantera/thermo/speciesThermoTypes.h"
 #include "cantera/thermo/SpeciesThermoFactory.h"
+#include "cantera/thermo/PDSSFactory.h"
 #include "cantera/thermo/MultiSpeciesThermo.h"
 #include "cantera/thermo/IdealGasPhase.h"
-#include "cantera/thermo/VPSSMgr.h"
-#include "VPSSMgrFactory.h"
 
 #include "cantera/thermo/IdealSolidSolnPhase.h"
 #include "cantera/thermo/MaskellSolidSolnPhase.h"
@@ -29,7 +28,6 @@
 #include "cantera/thermo/SurfPhase.h"
 #include "cantera/thermo/EdgePhase.h"
 #include "cantera/thermo/MetalPhase.h"
-#include "cantera/thermo/SemiconductorPhase.h"
 #include "cantera/thermo/StoichSubstance.h"
 #include "cantera/thermo/MineralEQ3.h"
 #include "cantera/thermo/MetalSHEelectrons.h"
@@ -40,7 +38,6 @@
 #include "cantera/thermo/DebyeHuckel.h"
 #include "cantera/thermo/IdealMolalSoln.h"
 #include "cantera/thermo/MolarityIonicVPSSTP.h"
-#include "cantera/thermo/MixedSolventElectrolyte.h"
 #include "cantera/thermo/IdealSolnGasVPSS.h"
 #include "cantera/base/stringUtils.h"
 
@@ -51,33 +48,6 @@ namespace Cantera
 
 ThermoFactory* ThermoFactory::s_factory = 0;
 std::mutex ThermoFactory::thermo_mutex;
-
-//! Define the number of ThermoPhase types for use in this factory routine
-static int ntypes = 27;
-
-//! Define the string name of the ThermoPhase types that are handled by this factory routine
-static string _types[] = {"IdealGas", "Incompressible",
-                          "Surface", "Edge", "Metal", "StoichSubstance",
-                          "PureFluid", "LatticeSolid", "Lattice",
-                          "HMW", "IdealSolidSolution", "DebyeHuckel",
-                          "IdealMolalSolution", "IdealGasVPSS", "IdealSolnVPSS",
-                          "MineralEQ3", "MetalSHEelectrons", "Margules", "PhaseCombo_Interaction",
-                          "IonsFromNeutralMolecule", "FixedChemPot", "MolarityIonicVPSSTP",
-                          "MixedSolventElectrolyte", "Redlich-Kister", "RedlichKwong",
-                          "RedlichKwongMFTP", "MaskellSolidSolnPhase"
-                         };
-
-//! Define the integer id of the ThermoPhase types that are handled by this factory routine
-static int _itypes[] = {cIdealGas, cIncompressible,
-                        cSurf, cEdge, cMetal, cStoichSubstance,
-                        cPureFluid, cLatticeSolid, cLattice,
-                        cHMW, cIdealSolidSolnPhase, cDebyeHuckel,
-                        cIdealMolalSoln, cVPSS_IdealGas, cIdealSolnGasVPSS_iscv,
-                        cMineralEQ3, cMetalSHEelectrons,
-                        cMargulesVPSSTP, cPhaseCombo_Interaction, cIonsFromNeutral, cFixedChemPot,
-                        cMolarityIonicVPSSTP, cMixedSolventElectrolyte, cRedlichKisterVPSSTP,
-                        cRedlichKwongMFTP, cRedlichKwongMFTP, cMaskellSolidSolnPhase
-                       };
 
 ThermoFactory::ThermoFactory()
 {
@@ -95,7 +65,7 @@ ThermoFactory::ThermoFactory()
     reg("DebyeHuckel", []() { return new DebyeHuckel(); });
     reg("IdealMolalSolution", []() { return new IdealMolalSoln(); });
     reg("IdealGasVPSS", []() { return new IdealSolnGasVPSS(); });
-    reg("IdealSolnVPSS", []() { return new IdealSolnGasVPSS(); });
+    m_synonyms["IdealGasVPSS"] = "IdealSolnVPSS";
     reg("MineralEQ3", []() { return new MineralEQ3(); });
     reg("MetalSHEelectrons", []() { return new MetalSHEelectrons(); });
     reg("Margules", []() { return new MargulesVPSSTP(); });
@@ -105,24 +75,13 @@ ThermoFactory::ThermoFactory()
     reg("MolarityIonicVPSSTP", []() { return new MolarityIonicVPSSTP(); });
     reg("Redlich-Kister", []() { return new RedlichKisterVPSSTP(); });
     reg("RedlichKwong", []() { return new RedlichKwongMFTP(); });
-    reg("RedlichKwongMFTP", []() { return new RedlichKwongMFTP(); });
+    m_synonyms["RedlichKwongMFTP"] = "RedlichKwong";
     reg("MaskellSolidSolnPhase", []() { return new MaskellSolidSolnPhase(); });
 }
 
 ThermoPhase* ThermoFactory::newThermoPhase(const std::string& model)
 {
     return create(model);
-}
-
-std::string eosTypeString(int ieos, int length)
-{
-    warn_deprecated("eosTypeString", "To be removed after Cantera 2.3.");
-    for (int n = 0; n < ntypes; n++) {
-        if (_itypes[n] == ieos) {
-            return _types[n];
-        }
-    }
-    return "UnknownPhaseType";
 }
 
 ThermoPhase* newPhase(XML_Node& xmlphase)
@@ -362,12 +321,6 @@ void importPhase(XML_Node& phase, ThermoPhase* th)
     formSpeciesXMLNodeList(spDataNodeList, spNamesList, spRuleList,
                            sparrays, dbases, sprule);
 
-    // Decide whether the the phase has a variable pressure ss or not
-    if (ssConvention == cSS_CONVENTION_VPSS) {
-        VPSSMgr* vp_spth = newVPSSMgr(vpss_ptr, &phase, spDataNodeList);
-        vpss_ptr->setVPSSMgr(vp_spth);
-    }
-
     size_t nsp = spDataNodeList.size();
     if (ssConvention == cSS_CONVENTION_SLAVE && nsp > 0) {
         throw CanteraError("importPhase()", "For Slave standard states, "
@@ -381,7 +334,11 @@ void importPhase(XML_Node& phase, ThermoPhase* th)
         }
         th->addSpecies(newSpecies(*s));
         if (vpss_ptr) {
-            vpss_ptr->createInstallPDSS(k, *s, &phase);
+            const XML_Node* const ss = s->findByName("standardState");
+            std::string ss_model = (ss) ? ss->attrib("model") : "ideal-gas";
+            unique_ptr<PDSS> kPDSS(newPDSS(ss_model));
+            kPDSS->setParametersFromXML(*s);
+            vpss_ptr->installPDSS(k, std::move(kPDSS));
         }
         th->saveSpeciesData(k, s);
     }

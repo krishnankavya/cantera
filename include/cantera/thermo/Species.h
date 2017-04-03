@@ -7,6 +7,7 @@
 #define CT_SPECIES_H
 
 #include "cantera/base/ct_defs.h"
+#include "cantera/base/AnyMap.h"
 
 namespace Cantera
 {
@@ -29,10 +30,9 @@ public:
     Species(const std::string& name, const compositionMap& comp,
             double charge=0.0, double size=1.0);
 
-    //! @deprecated To be removed after Cantera 2.3.
-    Species(const Species& other);
-    //! @deprecated To be removed after Cantera 2.3.
-    Species& operator=(const Species& other);
+    //! Species objects are not copyable or assignable
+    Species(const Species&) = delete;
+    Species& operator=(const Species& other) = delete;
     ~Species();
 
     //! The name of the species
@@ -53,6 +53,9 @@ public:
 
     //! Thermodynamic data for the species
     shared_ptr<SpeciesThermoInterpType> thermo;
+
+    //! Extra data used for specific models
+    AnyMap extra;
 };
 
 //! Create a new Species object from a 'species' XML_Node.

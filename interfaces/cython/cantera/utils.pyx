@@ -40,12 +40,17 @@ __sundials_version__ = '.'.join(str(get_sundials_version()))
 
 __version__ = pystr(get_cantera_version())
 
+__git_commit__ = pystr(CxxGitCommit())
+
 def appdelete():
     """ Delete all global Cantera C++ objects """
     CxxAppdelete()
 
 def make_deprecation_warnings_fatal():
     Cxx_make_deprecation_warnings_fatal()
+
+def suppress_thermo_warnings(pybool suppress=True):
+    Cxx_suppress_thermo_warnings(suppress)
 
 cdef Composition comp_map(X) except *:
     if isinstance(X, (str, unicode, bytes)):

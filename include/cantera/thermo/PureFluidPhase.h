@@ -15,7 +15,6 @@
 #define CT_EOS_TPX_H
 
 #include "ThermoPhase.h"
-#include "mix_defs.h"
 #include "cantera/tpx/Sub.h"
 
 namespace Cantera
@@ -34,19 +33,14 @@ public:
     //! Empty Base Constructor
     PureFluidPhase();
 
-    PureFluidPhase(const PureFluidPhase& right);
-    PureFluidPhase& operator=(const PureFluidPhase& right);
-    virtual ThermoPhase* duplMyselfAsThermoPhase() const;
-
-    //! Equation of state type
-    //! @deprecated To be removed after Cantera 2.3.
-    virtual int eosType() const {
-        warn_deprecated("PureFluidPhase::eosType",
-                        "To be removed after Cantera 2.3.");
-        return cPureFluid;
-    }
     virtual std::string type() const {
         return "PureFluid";
+    }
+
+    //! Set the name of the TPX substance to use for the equation of state. This
+    //! function should be called before initThermo().
+    void setSubstance(const std::string& name) {
+        m_tpx_name = name;
     }
 
     virtual doublereal enthalpy_mole() const;
@@ -190,9 +184,14 @@ private:
 
     //! Int indicating the type of the fluid
     /*!
-     * The tpx package uses an int to indicate what fluid is being sought.
+     * The tpx package uses an int to indicate what fluid is being sought. Used
+     * only if #m_tpx_name is not set.
      */
     int m_subflag;
+
+    //! Name for this substance used by the TPX package. If this is not set,
+    //! #m_subflag is used instead.
+    std::string m_tpx_name;
 
     //! Molecular weight of the substance (kg kmol-1)
     doublereal m_mw;

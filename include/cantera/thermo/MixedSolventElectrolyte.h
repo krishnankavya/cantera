@@ -214,6 +214,7 @@ namespace Cantera
  * \f$k^{-1} \f$ has units of s-1.
  *
  *  @ingroup thermoprops
+ *  @deprecated To be removed after Cantera 2.4.
  */
 class MixedSolventElectrolyte : public MolarityIonicVPSSTP
 {
@@ -239,10 +240,6 @@ public:
      *                (default is the empty string)
      */
     MixedSolventElectrolyte(XML_Node& phaseRef, const std::string& id = "");
-
-    MixedSolventElectrolyte(const MixedSolventElectrolyte& b);
-    MixedSolventElectrolyte& operator=(const MixedSolventElectrolyte& b);
-    virtual ThermoPhase* duplMyselfAsThermoPhase() const;
 
     virtual std::string type() const {
         return "MixedSolventElectrolyte";

@@ -18,6 +18,7 @@
 #include "cantera/thermo/IdealMolalSoln.h"
 #include "cantera/thermo/ThermoFactory.h"
 #include "cantera/base/ctml.h"
+#include "cantera/base/stringUtils.h"
 #include <iostream>
 
 namespace Cantera
@@ -41,41 +42,6 @@ IdealMolalSoln::IdealMolalSoln() :
     IMS_agCut_(0.0),
     IMS_bgCut_(0.0)
 {
-}
-
-IdealMolalSoln::IdealMolalSoln(const IdealMolalSoln& b) :
-    MolalityVPSSTP(b)
-{
-    // Use the assignment operator to do the brunt of the work for the copy
-    // constructor.
-    *this = b;
-}
-
-IdealMolalSoln& IdealMolalSoln::operator=(const IdealMolalSoln& b)
-{
-    if (&b != this) {
-        MolalityVPSSTP::operator=(b);
-        m_speciesMolarVolume = b.m_speciesMolarVolume;
-        m_formGC = b.m_formGC;
-        IMS_typeCutoff_ = b.IMS_typeCutoff_;
-        IMS_X_o_cutoff_ = b.IMS_X_o_cutoff_;
-        IMS_gamma_o_min_ = b.IMS_gamma_o_min_;
-        IMS_gamma_k_min_ = b.IMS_gamma_k_min_;
-        IMS_cCut_ = b.IMS_cCut_;
-        IMS_slopefCut_ = b.IMS_slopefCut_;
-        IMS_dfCut_ = b.IMS_dfCut_;
-        IMS_efCut_ = b.IMS_efCut_;
-        IMS_afCut_ = b.IMS_afCut_;
-        IMS_bfCut_ = b.IMS_bfCut_;
-        IMS_slopegCut_ = b.IMS_slopegCut_;
-        IMS_dgCut_ = b.IMS_dgCut_;
-        IMS_egCut_ = b.IMS_egCut_;
-        IMS_agCut_ = b.IMS_agCut_;
-        IMS_bgCut_ = b.IMS_bgCut_;
-        m_tmpV = b.m_tmpV;
-        IMS_lnActCoeffMolal_ = b.IMS_lnActCoeffMolal_;
-    }
-    return *this;
 }
 
 IdealMolalSoln::IdealMolalSoln(const std::string& inputFile,
@@ -121,11 +87,6 @@ IdealMolalSoln::IdealMolalSoln(XML_Node& root, const std::string& id_) :
     IMS_bgCut_(0.0)
 {
     importPhase(root, this);
-}
-
-ThermoPhase* IdealMolalSoln::duplMyselfAsThermoPhase() const
-{
-    return new IdealMolalSoln(*this);
 }
 
 doublereal IdealMolalSoln::enthalpy_mole() const
@@ -396,8 +357,7 @@ bool IdealMolalSoln::addSpecies(shared_ptr<Species> spec)
 
 void IdealMolalSoln::initThermoXML(XML_Node& phaseNode, const std::string& id_)
 {
-    // Initialize the whole thermo object, using a virtual function.
-    initThermo();
+    MolalityVPSSTP::initThermoXML(phaseNode, id_);
 
     if (id_.size() > 0 && phaseNode.id() != id_) {
         throw CanteraError("IdealMolalSoln::initThermo",
@@ -414,20 +374,7 @@ void IdealMolalSoln::initThermoXML(XML_Node& phaseNode, const std::string& id_)
     // Possible change the form of the standard concentrations
     if (thermoNode.hasChild("standardConc")) {
         XML_Node& scNode = thermoNode.child("standardConc");
-        m_formGC = 2;
-        std::string formString = scNode.attrib("model");
-        if (formString != "") {
-            if (formString == "unity") {
-                m_formGC = 0;
-            } else if (formString == "molar_volume") {
-                m_formGC = 1;
-            } else if (formString == "solvent_volume") {
-                m_formGC = 2;
-            } else {
-                throw CanteraError("IdealMolalSoln::initThermo",
-                                   "Unknown standardConc model: " + formString);
-            }
-        }
+        setStandardConcentrationModel(scNode["model"]);
     }
 
     // Get the Name of the Solvent:
@@ -446,7 +393,6 @@ void IdealMolalSoln::initThermoXML(XML_Node& phaseNode, const std::string& id_)
     if (thermoNode.hasChild("activityCoefficients")) {
         XML_Node& acNode = thermoNode.child("activityCoefficients");
         std::string modelString = acNode.attrib("model");
-        IMS_typeCutoff_ = 0;
         if (modelString != "IdealMolalSoln") {
             throw CanteraError("IdealMolalSoln::initThermoXML",
                                "unknown ActivityCoefficient model: " + modelString);
@@ -455,15 +401,7 @@ void IdealMolalSoln::initThermoXML(XML_Node& phaseNode, const std::string& id_)
             XML_Node& ccNode = acNode.child("idealMolalSolnCutoff");
             modelString = ccNode.attrib("model");
             if (modelString != "") {
-                if (modelString == "polyExp") {
-                    IMS_typeCutoff_ = 2;
-                } else if (modelString == "poly") {
-                    IMS_typeCutoff_ = 1;
-                } else {
-                    throw CanteraError("IdealMolalSoln::initThermoXML",
-                                       "Unknown idealMolalSolnCutoff form: " + modelString);
-                }
-
+                setCutoffModel(modelString);
                 if (ccNode.hasChild("gamma_o_limit")) {
                     IMS_gamma_o_min_ = getFloat(ccNode, "gamma_o_limit");
                 }
@@ -483,6 +421,8 @@ void IdealMolalSoln::initThermoXML(XML_Node& phaseNode, const std::string& id_)
                     IMS_slopegCut_ = getFloat(ccNode, "slope_g_limit");
                 }
             }
+        } else {
+            setCutoffModel("none");
         }
     }
 
@@ -504,32 +444,45 @@ void IdealMolalSoln::initThermoXML(XML_Node& phaseNode, const std::string& id_)
                            "Solvent " + solventName +
                            " should be first species");
     }
+}
 
-    // Now go get the molar volumes
-    XML_Node& speciesList = phaseNode.child("speciesArray");
-    XML_Node* speciesDB =
-        get_XML_NameID("speciesData", speciesList["datasrc"],
-                       &phaseNode.root());
-    const std::vector<std::string> &sss = speciesNames();
-
-    for (size_t k = 0; k < m_kk; k++) {
-        XML_Node* s = speciesDB->findByAttr("name", sss[k]);
-        XML_Node* ss = s->findByName("standardState");
-        m_speciesMolarVolume[k] = getFloat(*ss, "molarVolume", "toSI");
+void IdealMolalSoln::initThermo()
+{
+    MolalityVPSSTP::initThermo();
+    for (size_t k = 0; k < nSpecies(); k++) {
+        m_speciesMolarVolume[k] = providePDSS(k)->molarVolume();
     }
-
-    IMS_typeCutoff_ = 2;
     if (IMS_typeCutoff_ == 2) {
         calcIMSCutoffParams_();
     }
-
-    MolalityVPSSTP::initThermoXML(phaseNode, id_);
     setMoleFSolventMin(1.0E-5);
+}
 
-    // Set the state
-    if (phaseNode.hasChild("state")) {
-        XML_Node& stateNode = phaseNode.child("state");
-        setStateFromXML(stateNode);
+void IdealMolalSoln::setStandardConcentrationModel(const std::string& model)
+{
+    if (ba::iequals(model, "unity")) {
+        m_formGC = 0;
+    } else if (ba::iequals(model, "molar_volume")) {
+        m_formGC = 1;
+    } else if (ba::iequals(model, "solvent_volume")) {
+        m_formGC = 2;
+    } else {
+        throw CanteraError("IdealSolnGasVPSS::setStandardConcentrationModel",
+                           "Unknown standard concentration model '{}'", model);
+    }
+}
+
+void IdealMolalSoln::setCutoffModel(const std::string& model)
+{
+    if (ba::iequals(model, "none")) {
+        IMS_typeCutoff_ = 0;
+    } else if (ba::iequals(model, "poly")) {
+        IMS_typeCutoff_ = 1;
+    } else if (ba::iequals(model, "polyexp")) {
+        IMS_typeCutoff_ = 2;
+    } else {
+        throw CanteraError("IdealMolalSoln::setCutoffModel",
+                           "Unknown cutoff model '{}'", model);
     }
 }
 

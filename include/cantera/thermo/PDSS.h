@@ -11,7 +11,6 @@
 #ifndef CT_PDSS_H
 #define CT_PDSS_H
 #include "cantera/base/ct_defs.h"
-#include "mix_defs.h"
 
 namespace Cantera
 {
@@ -50,14 +49,12 @@ namespace Cantera
  *
  * Class PDSS is the base class for a family of classes that compute properties
  * of a single species in a phase at its standard states, for a range of
- * temperatures and pressures.
- *
- * Phases which use the VPSSMGr class must have their respective ThermoPhase
- * objects actually be derivatives of the VPStandardState class. These classes
- * assume that there exists a standard state for each species in the phase,
- * where the Thermodynamic functions are specified as a function of temperature
- * and pressure.  Standard state objects for each species in the phase are all
- * derived from the PDSS virtual base class.
+ * temperatures and pressures. PDSS objects are used by derivatives of the
+ * VPStandardState class. These classes assume that there exists a standard
+ * state for each species in the phase, where the thermodynamic functions are
+ * specified as a function of temperature and pressure.  Standard state objects
+ * for each species in the phase are all derived from the PDSS virtual base
+ * class.
  *
  * The following classes inherit from PDSS. Each of these classes handles just
  * one species.
@@ -100,16 +97,9 @@ namespace Cantera
  *   - This model assumes that the species follows the HKFT pressure dependent
  *     equation of state
  *
- * The choice of which VPSSMGr object to be used is either implicitly made by
- * Cantera by querying the XML data file for compatibility or it may be
- * explicitly requested in the XML file.
- *
- * Normally the PDSS object is not called directly. Instead the VPSSMgr object
- * manages the calls to the PDSS object for the entire set of species that
- * comprise a phase. Additionally, sometimes the VPSSMgr object will not call
- * the PDSS object at all to calculate thermodynamic properties, instead relying
- * on its own determination/knowledge for how to calculate thermo quantities
- * quickly given what it knows about the PDSS objects under its control.
+ * Normally the PDSS object is not called directly. Instead the
+ * VPStandardStateTP object manages the calls to the PDSS object for the entire
+ * set of species that comprise a phase.
  *
  * The PDSS objects may or may not utilize the MultiSpeciesThermo reference state
  * manager class to calculate the reference state thermodynamics functions in
@@ -138,8 +128,8 @@ namespace Cantera
 
 class XML_Node;
 class MultiSpeciesThermo;
+class SpeciesThermoInterpType;
 class VPStandardStateTP;
-class VPSSMgr;
 
 //! Virtual base class for a species with a pressure dependent standard state
 /*!
@@ -179,48 +169,17 @@ public:
     //! @name Constructors
     //! @{
 
-    //! Empty Constructor
+    //! Default Constructor
     PDSS();
 
-    //! Constructor that initializes the object by examining the XML entries
-    //! from the ThermoPhase object
-    /*!
-     * This function calls the constructPDSS member function.
-     *
-     * @param tp       Pointer to the ThermoPhase object pertaining to the phase
-     * @param spindex  Species index of the species in the phase
-     */
-    PDSS(VPStandardStateTP* tp, size_t spindex);
-
-    //! @deprecated Copy constructor to be removed after Cantera 2.3 for all
-    //!     classes derived from PDSS.
-    PDSS(const PDSS& b);
-    //! @deprecated Assignment operator to be removed after Cantera 2.3 for all
-    //!     classes derived from PDSS.
-    PDSS& operator=(const PDSS& b);
+    // PDSS objects are not copyable or assignable
+    PDSS(const PDSS& b) = delete;
+    PDSS& operator=(const PDSS& b) = delete;
     virtual ~PDSS() {}
-
-    //! Duplication routine for objects which inherit from PDSS
-    /*!
-     * This function can be used to duplicate objects derived from PDSS even
-     * if the application only has a pointer to PDSS to work with.
-     *
-     * @return A pointer to the base PDSS object type
-     * @deprecated To be removed after Cantera 2.3 for all classes derived from
-     *     PDSS.
-     */
-    virtual PDSS* duplMyselfAsPDSS() const;
 
     //! @}
     //! @name  Utilities
     //! @{
-
-    //! Returns the type of the standard state parameterization
-    /*!
-     * @return The integer # of the parameterization
-     * @deprecated To be removed after Cantera 2.3.
-     */
-    PDSS_enumType reportPDSSType() const;
 
      //! @}
      //! @name Molar Thermodynamic Properties of the Species Standard State in
@@ -390,8 +349,7 @@ public:
     //! Sets the pressure in the object
     /*!
      * Currently, this sets the pressure in the PDSS object. It is indeterminant
-     * what happens to the owning VPStandardStateTP object and to the VPSSMgr
-     * object.
+     * what happens to the owning VPStandardStateTP object.
      *
      * @param   pres   Pressure to be set (Pascal)
      */
@@ -466,36 +424,46 @@ public:
     //! @name Initialization of the Object
     //! @{
 
-    //! Initialization routine for all of the shallow pointers
-    /*!
-     * This is a cascading call, where each level should call the the parent
-     * level.
-     *
-     * The initThermo() routines get called before the initThermoXML() routines
-     * from the constructPDSSXML() routine.
-     *
-     * Calls initPtrs();
-     */
-    virtual void initThermo();
+    //! Set the SpeciesThermoInterpType object used to calculate reference
+    //! state properties
+    void setReferenceThermo(shared_ptr<SpeciesThermoInterpType> stit) {
+        m_spthermo = stit;
+    }
 
-    //! Initialization routine for the PDSS object based on the phaseNode
+    //! Returns 'true' if this object should be used in an STITbyPDSS object
+    //! in the phase's reference thermo manager, or 'false' if a separate
+    //! SpeciesThermoInterpType should be constructed
+    virtual bool useSTITbyPDSS() const {
+        return false;
+    }
+
+    //! Set the parent VPStandardStateTP object of this PDSS object
+    /*!
+     * This information is only used by certain PDSS subclasses
+     * @param phase   Pointer to the parent phase
+     * @param k       Index of this species in the phase
+     */
+    virtual void setParent(VPStandardStateTP* phase, size_t k) {}
+
+    //! Initialization routine
     /*!
      * This is a cascading call, where each level should call the the parent
      * level.
-     *
-     * @param phaseNode  Reference to the phase Information for the phase
-     *                   that owns this species.
-     * @param id         Optional parameter identifying the name of the phase.
-     *                   If none is given, the first XML phase element will be
-     *                   used.
      */
-    virtual void initThermoXML(const XML_Node& phaseNode, const std::string& id);
+    virtual void initThermo() {}
+
+    //! Initialization routine for the PDSS object based on the speciesNode
+    /*!
+     * This is a cascading call, where each level should call the the parent
+     * level. This function is called before initThermo()
+     */
+    virtual void setParametersFromXML(const XML_Node& speciesNode) {}
 
     //! This utility function reports back the type of parameterization and
     //! all of the parameters for the species, index.
     /*!
-     * @param kindex     Species index
-     * @param type      Integer type of the standard type
+     * @param kindex    Species index (unused)
+     * @param type      Integer type of the standard type (unused)
      * @param c         Vector of coefficients used to set the
      *                  parameters for the standard state.
      * @param minTemp   output - Minimum temperature
@@ -506,37 +474,9 @@ public:
                               doublereal& minTemp, doublereal& maxTemp,
                               doublereal& refPressure) const;
 
-private:
-    //! Initialize all of the internal shallow pointers that can be initialized
-    /*!
-     * This routine isn't virtual. It's only applicable for the current class
-     */
-    void initPtrs();
-
-public:
-    //! Initialize or Reinitialize all shallow pointers in the object
-    /*!
-     *  This command is called to reinitialize all shallow pointers in the
-     *  object. It's needed for the duplicator capability
-     *
-     * @param vptp_ptr       Pointer to the Variable pressure ThermoPhase object
-     * @param vpssmgr_ptr    Pointer to the variable pressure standard state
-     *                       calculator for this phase
-     * @param spthermo_ptr   Pointer to the optional MultiSpeciesThermo object
-     *                       that will handle the calculation of the reference
-     *                       state thermodynamic coefficients.
-     * @deprecated To be removed after Cantera 2.3 for all classes derived from
-     *     PDSS.
-     */
-    virtual void initAllPtrs(VPStandardStateTP* vptp_ptr, VPSSMgr* vpssmgr_ptr,
-                             MultiSpeciesThermo* spthermo_ptr);
     //@}
 
 protected:
-    //! Enumerated type describing the type of the PDSS object
-    //! @deprecated To be removed after Cantera 2.3.
-    PDSS_enumType m_pdssType;
-
     //! Current temperature used by the PDSS object
     mutable doublereal m_temp;
 
@@ -552,100 +492,12 @@ protected:
     //! Maximum temperature
     doublereal m_maxTemp;
 
-    //! ThermoPhase which this species belongs to.
-    /*!
-     * Note, in some applications (i.e., mostly testing applications, this may
-     * be a null value. Applications should test whether this is null before
-     * usage.
-     */
-    VPStandardStateTP* m_tp;
-
-    //! Pointer to the VPSS manager for this object
-    VPSSMgr* m_vpssmgr_ptr;
-
     //! Molecular Weight of the species
     doublereal m_mw;
 
-    //! Species index in the ThermoPhase corresponding to this species.
-    size_t m_spindex;
-
-    //! Pointer to the species thermodynamic property manager.
-    /*!
-     * This is a copy of the pointer in the ThermoPhase object. Note, this
-     * object doesn't own the pointer. If the MultiSpeciesThermo object
-     * doesn't know or doesn't control the calculation, this will be set to
-     * zero.
-     */
-    MultiSpeciesThermo* m_spthermo;
-
-    //! Reference state enthalpy divided by RT.
-    /*!
-     * Storage for the thermo properties is provided by VPSSMgr. This object
-     * owns a shallow pointer. Calculated at the current value of T and m_p0
-     */
-    doublereal* m_h0_RT_ptr;
-
-    //! Reference state heat capacity divided by R.
-    /*!
-     *  Storage for the thermo properties is provided by VPSSMgr. Calculated
-     *  at the current value of T and m_p0
-     */
-    doublereal* m_cp0_R_ptr;
-
-    //! Reference state entropy divided by R.
-    /*!
-     * Storage for the thermo properties is provided by VPSSMgr. Calculated
-     * at the current value of T and m_p0
-     */
-    doublereal* m_s0_R_ptr;
-
-    //! Reference state Gibbs free energy divided by RT.
-    /*!
-     * Calculated at the current value of T and m_p0
-     */
-    doublereal* m_g0_RT_ptr;
-
-    //! Reference state molar volume (m3 kg-1)
-    /*!
-     * Storage for the thermo properties is provided by VPSSMgr. Calculated
-     * at the current value of T and m_p0
-     */
-    doublereal* m_V0_ptr;
-
-    //! Standard state enthalpy divided by RT.
-    /*!
-     * Storage for the thermo properties is provided by VPSSMgr. Calculated
-     * at the current value of T and P.
-     */
-    doublereal* m_hss_RT_ptr;
-
-    //! Standard state heat capacity divided by R.
-    /*!
-     * Storage for the thermo properties is provided by VPSSMgr. Calculated
-     * at the current value of T and P.
-     */
-    doublereal* m_cpss_R_ptr;
-
-    //! Standard state entropy divided by R.
-    /*!
-     * Storage for the thermo properties is provided by VPSSMgr. Calculated
-     * at the current value of T and P.
-     */
-    doublereal* m_sss_R_ptr;
-
-    //! Standard state Gibbs free energy divided by RT.
-    /*!
-     * Storage for the thermo properties is provided by VPSSMgr. Calculated
-     * at the current value of T and P.
-     */
-    doublereal* m_gss_RT_ptr;
-
-    //! Standard State molar volume (m3 kg-1)
-    /*!
-     * Storage for the thermo properties is provided by VPSSMgr. Calculated
-     * at the current value of T and P.
-     */
-    doublereal* m_Vss_ptr;
+    //! Pointer to the species thermodynamic property manager. Not used in all
+    //! PDSS models.
+    shared_ptr<SpeciesThermoInterpType> m_spthermo;
 };
 
 //! Base class for PDSS classes which compute molar properties directly
@@ -662,10 +514,36 @@ public:
 class PDSS_Nondimensional : public virtual PDSS
 {
 public:
+    PDSS_Nondimensional();
+
     virtual doublereal enthalpy_mole() const;
     virtual doublereal entropy_mole() const;
     virtual doublereal gibbs_mole() const;
     virtual doublereal cp_mole() const;
+
+    virtual double enthalpy_RT_ref() const;
+    virtual double entropy_R_ref() const;
+    virtual double gibbs_RT_ref() const;
+    virtual double cp_R_ref() const;
+    virtual double molarVolume_ref() const;
+    virtual double enthalpy_RT() const;
+    virtual double entropy_R() const;
+    virtual double gibbs_RT() const;
+    virtual double cp_R() const;
+    virtual double molarVolume() const;
+    virtual double density() const;
+
+protected:
+    double m_h0_RT; //!< Reference state enthalpy divided by RT
+    double m_cp0_R; //!< Reference state heat capacity divided by R
+    double m_s0_R; //!< Reference state entropy divided by R
+    double m_g0_RT; //!< Reference state Gibbs free energy divided by RT
+    double m_V0; //!< Reference state molar volume (m3 kg-1)
+    double m_hss_RT; //!< Standard state enthalpy divided by RT
+    double m_cpss_R; //!< Standard state heat capacity divided by R
+    double m_sss_R; //!< Standard state entropy divided by R
+    double m_gss_RT; //!< Standard state Gibbs free energy divided by RT
+    double m_Vss; //!< Standard State molar volume (m3 kg-1)
 };
 
 }

@@ -49,60 +49,9 @@ namespace Cantera
 class PDSS_Water : public PDSS_Molar
 {
 public:
-    //! @name  Constructors
-    //! @{
-
-    //! Bare constructor
-    /*!
-     *  eliminate?
-     */
+    //! Default constructor
     PDSS_Water();
 
-    //! Constructor that initializes the object by examining the XML entries
-    //! from the ThermoPhase object
-    /*!
-     *  This function calls the constructPDSS member function.
-     *
-     * @param tp       Pointer to the ThermoPhase object pertaining to the phase
-     * @param spindex  Species index of the species in the phase
-     */
-    PDSS_Water(VPStandardStateTP* tp, int spindex);
-
-    //! Constructor that initializes the object by examining the input file
-    //! of the variable pressure ThermoPhase object
-    /*!
-     *  This function calls the constructPDSSFile member function.
-     *
-     *  @param tp        Pointer to the variable pressure ThermoPhase object pertaining to the phase
-     *  @param spindex   Species index of the species in the phase
-     *  @param inputFile String name of the input file
-     *  @param id        String name of the phase in the input file. The default
-     *                   is the empty string, in which case the first phase in the
-     *                   file is used.
-     * @deprecated To be removed after Cantera 2.3.
-     */
-    PDSS_Water(VPStandardStateTP* tp, int spindex,
-               const std::string& inputFile, const std::string& id = "");
-
-    //! Constructor that initializes the object by examining the input file
-    //! of the variable pressure ThermoPhase object
-    /*!
-     * This function calls the constructPDSSXML member function.
-     *
-     * @param tp        Pointer to the ThermoPhase object pertaining to the phase
-     * @param spindex   Species index of the species in the phase
-     * @param speciesNode Reference to the species XML tree.
-     * @param phaseRef  Reference to the XML tree containing the phase information.
-     * @param spInstalled Is the species already installed.
-     */
-    PDSS_Water(VPStandardStateTP* tp, int spindex, const XML_Node& speciesNode,
-               const XML_Node& phaseRef, bool spInstalled);
-
-    PDSS_Water(const PDSS_Water& b);
-    PDSS_Water& operator=(const PDSS_Water& b);
-    virtual PDSS* duplMyselfAsPDSS() const;
-
-    //! @}
     //! @name  Molar Thermodynamic Properties of the Species Standard State in the Solution
     //! @{
 
@@ -200,50 +149,8 @@ public:
     }
 
     //! @}
-    //! @name Initialization of the Object
-    //! @{
 
-    //! Internal routine that initializes the underlying water model
-    void constructSet();
-
-    //! Initialization of a PDSS object using an
-    //! input XML file.
-    /*!
-     * This routine is a precursor to constructPDSSXML(XML_Node*)
-     * routine, which does most of the work.
-     *
-     * @param vptp_ptr    Pointer to the Variable pressure ThermoPhase object
-     * @param spindex     Species index within the phase
-     * @param inputFile   XML file containing the description of the phase
-     * @param id          Optional parameter identifying the name of the
-     *                    phase. If none is given, the first XML
-     *                    phase element will be used.
-     * @deprecated To be removed after Cantera 2.3.
-     */
-    void constructPDSSFile(VPStandardStateTP* vptp_ptr, int spindex,
-                           const std::string& inputFile, const std::string& id);
-
-    //!Initialization of a PDSS object using an XML tree
-    /*!
-     * This routine is a driver for the initialization of the
-     * object.
-     *
-     *   basic logic:
-     *     - initThermo()                 (cascade)
-     *     - getStuff from species Part of XML file
-     *     - initThermoXML(phaseNode)      (cascade)
-     *
-     * @param vptp_ptr   Pointer to the Variable pressure ThermoPhase object
-     * @param spindex    Species index within the phase
-     * @param phaseNode  Reference to the phase Information for the phase
-     *                   that owns this species.
-     * @param id         Optional parameter identifying the name of the
-     *                   phase. If none is given, the first XML
-     *                   phase element will be used.
-     */
-    void constructPDSSXML(VPStandardStateTP* vptp_ptr, int spindex,
-                          const XML_Node& phaseNode, const std::string& id);
-    //@}
+    virtual bool useSTITbyPDSS() const { return true; }
 
 private:
     //! Pointer to the WaterPropsIAPWS object, which does the actual calculations
@@ -295,9 +202,6 @@ private:
      *  units = J kmol-1 K-1.
      */
     doublereal SW_Offset;
-
-    //! Verbose flag - used?
-    bool m_verbose;
 
 public:
     /**

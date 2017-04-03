@@ -32,38 +32,6 @@ Species::~Species()
 {
 }
 
-Species::Species(const Species& other)
-    : name(other.name)
-    , composition(other.composition)
-    , charge(other.charge)
-    , size(other.size)
-    , transport(other.transport)
-{
-    warn_deprecated("Species copy constructor",
-                    "To be removed after Cantera 2.3.");
-    if (other.thermo) {
-        thermo.reset(other.thermo->duplMyselfAsSpeciesThermoInterpType());
-    }
-}
-
-Species& Species::operator=(const Species& other)
-{
-    warn_deprecated("Species assignment operator",
-                    "To be removed after Cantera 2.3.");
-    if (this == &other) {
-        return *this;
-    }
-    name = other.name;
-    composition = other.composition;
-    charge = other.charge;
-    size = other.size;
-    transport = other.transport;
-    if (other.thermo) {
-        thermo.reset(other.thermo->duplMyselfAsSpeciesThermoInterpType());
-    }
-    return *this;
-}
-
 shared_ptr<Species> newSpecies(const XML_Node& species_node)
 {
     std::string name = species_node["name"];
@@ -81,6 +49,15 @@ shared_ptr<Species> newSpecies(const XML_Node& species_node)
     if (species_node.hasChild("transport")) {
         s->transport = newTransportData(species_node.child("transport"));
         s->transport->validate(*s);
+    }
+
+    // Extra data used for some electrolyte species
+    if (species_node.hasChild("stoichIsMods")) {
+        s->extra["weak_acid_charge"] = getFloat(species_node, "stoichIsMods");
+    }
+
+    if (species_node.hasChild("electrolyteSpeciesType")) {
+        s->extra["electrolyte_species_type"] = species_node.child("electrolyteSpeciesType").value();
     }
 
     return s;

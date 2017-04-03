@@ -66,6 +66,16 @@ void make_deprecation_warnings_fatal()
     app()->make_deprecation_warnings_fatal();
 }
 
+void suppress_thermo_warnings(bool suppress)
+{
+    app()->suppress_thermo_warnings(suppress);
+}
+
+bool thermo_warnings_suppressed()
+{
+    return app()->thermo_warnings_suppressed();
+}
+
 // **************** Global Data ****************
 
 Unit* Unit::s_u = 0;
@@ -83,6 +93,15 @@ void thread_complete()
     app()->thread_complete();
 }
 
+std::string gitCommit()
+{
+#ifdef GIT_COMMIT
+    return GIT_COMMIT;
+#else
+    return "unknown";
+#endif
+}
+
 XML_Node* get_XML_File(const std::string& file, int debug)
 {
     return app()->get_XML_File(file, debug);
@@ -96,40 +115,6 @@ XML_Node* get_XML_from_string(const std::string& text)
 void close_XML_File(const std::string& file)
 {
     app()->close_XML_File(file);
-}
-
-int nErrors()
-{
-    warn_deprecated("nErrors", "To be removed after Cantera 2.3");
-    return app()->getErrorCount();
-}
-
-void popError()
-{
-    warn_deprecated("popError", "To be removed after Cantera 2.3");
-    app()->popError();
-}
-
-string lastErrorMessage()
-{
-    warn_deprecated("lastErrorMessage", "To be removed after Cantera 2.3");
-    return app()->lastErrorMessage();
-}
-
-void showErrors(std::ostream& f)
-{
-    warn_deprecated("showErrors", "To be removed after Cantera 2.3");
-    app()->getErrors(f);
-}
-
-void showErrors()
-{
-    app()->logErrors();
-}
-
-void setError(const std::string& r, const std::string& msg)
-{
-    app()->addError(r, msg);
 }
 
 void addDirectory(const std::string& dir)

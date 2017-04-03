@@ -14,11 +14,10 @@
 #include "Nitrogen.h"
 #include "Oxygen.h"
 #include "Water.h"
-#include "RedlichKwong.h"
 
 namespace tpx
 {
-Substance* GetSubstanceByName(std::string name)
+Substance* newSubstance(const std::string& name)
 {
     std::string lcname = boost::algorithm::to_lower_copy(name);
     if (lcname == "water") {
@@ -33,14 +32,13 @@ Substance* GetSubstanceByName(std::string name)
         return new oxygen;
     } else if (lcname == "hfc134a") {
         return new HFC134a;
-    } else if (lcname == "rk") {
-        return new RedlichKwong;
     } else if (lcname == "carbondioxide") {
         return new CarbonDioxide;
     } else if (lcname == "heptane") {
         return new Heptane;
     } else {
-        return 0;
+        throw Cantera::CanteraError("tpx::newSubstance", "No Substance"
+            " definition known for '{}'.", name);
     }
 }
 
@@ -58,8 +56,6 @@ Substance* GetSub(int isub)
         return new oxygen;
     } else if (isub == 5) {
         return new HFC134a;
-    } else if (isub == 6) {
-        return new RedlichKwong;
     } else if (isub == 7) {
         return new CarbonDioxide;
     } else if (isub == 8) {

@@ -43,8 +43,6 @@ def add_dependencies(mod, ext):
 
     for f in (mglob(localenv, 'cantera', 'py') +
               mglob(localenv, 'cantera/test', 'py') +
-              mglob(localenv, 'cantera/mixmaster', 'py') +
-              mglob(localenv, 'cantera/mixmaster/Units', 'py') +
               mglob(localenv, 'cantera/examples/tutorial', 'py') +
               mglob(localenv, 'cantera/examples/equilibrium', 'py') +
               mglob(localenv, 'cantera/examples/kinetics', 'py') +
@@ -99,6 +97,7 @@ def install_module(prefix, python_version):
         # Install Python module in the default location
         extra = ''
 
+    env['python%s_module_loc' % ver] = '<unspecified>'
     if localenv['PYTHON_INSTALLER'] == 'direct':
         mod_inst = install(localenv.Command, dummy, mod,
                            build_cmd + ' install %s' % extra +
@@ -118,14 +117,13 @@ def install_module(prefix, python_version):
           env['install_python2_action'] = mod_inst
 
     elif localenv['PYTHON_INSTALLER'] == 'debian':
+        extra = localenv.subst(' --root=${python%s_prefix}' % ver)
         install(localenv.Command, dummy, mod,
                 build_cmd + ' install --install-layout=deb --no-compile %s' % extra)
-        env['python%s_module_loc' % ver] = '<unspecified>'
     elif localenv['PYTHON_INSTALLER'] == 'binary':
         install(localenv.Command, dummy, mod,
                 build_cmd + ' bdist_msi --dist-dir=../..' +
                 ' --target-version=%s' % python_version)
-        env['python%s_module_loc' % ver] = '<unspecified>'
 
 dataFiles = localenv.RecursiveInstall('#interfaces/cython/cantera/data',
                                       '#build/data')
@@ -136,7 +134,8 @@ testFiles = localenv.RecursiveInstall('#interfaces/cython/cantera/test/data',
 build(testFiles)
 
 for f in ['inputs/h2o2.inp', 'inputs/gri30.inp', 'transport/gri30_tran.dat']:
-    build(localenv.Install('#interfaces/cython/cantera/test/data/', '#data/' + f))
+    inp = build(localenv.Install('#interfaces/cython/cantera/test/data/', '#data/' + f))
+    testFiles.append(inp)
 
 # Cython module for Python 3.x
 if localenv['python3_package'] == 'y':
@@ -185,9 +184,7 @@ if localenv['python_package'] == 'full':
         def convert_example(target, source, env):
             shutil.copyfile(source[0].abspath, target[0].abspath)
             if env['OS'] == 'Windows':
-                python_dir = os.path.dirname(which(env['python_cmd']))
-                threetotwo_cmd = pjoin(python_dir, 'Scripts', '3to2')
-                subprocess.call([env['python_cmd'], threetotwo_cmd, '--no-diff', '-n', '-w','-x', 'str',
+                subprocess.call(env['threetotwo_cmd'] + ['--no-diff', '-n', '-w','-x', 'str',
                              '-f', 'all', '-f', 'printfunction', '-x', 'print',
                              '-x', 'open', target[0].abspath])
             else:
@@ -204,7 +201,7 @@ if localenv['python_package'] == 'full':
                 a = build(py2env.Command(pjoin(targetdir, subdir, filename),
                                          pjoin(dirpath, filename),
                                          convert_example))
-                py2env.Depends(a, mod)
+                py2env.Depends(mod, a)
 
     add_dependencies(mod, ext)
     install_module(py2env['python_prefix'], py2_version)

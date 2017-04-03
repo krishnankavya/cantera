@@ -25,7 +25,7 @@ namespace Cantera
 {
 
 ThermoPhase::ThermoPhase() :
-    m_spthermo(new MultiSpeciesThermo()), m_speciesData(0),
+    m_speciesData(0),
     m_phi(0.0),
     m_hasElementPotentials(false),
     m_chargeNeutralityNecessary(false),
@@ -39,73 +39,14 @@ ThermoPhase::~ThermoPhase()
     for (size_t k = 0; k < m_speciesData.size(); k++) {
         delete m_speciesData[k];
     }
-    delete m_spthermo;
-}
-
-ThermoPhase::ThermoPhase(const ThermoPhase& right)  :
-    m_spthermo(new MultiSpeciesThermo()),
-    m_speciesData(0),
-    m_phi(0.0),
-    m_hasElementPotentials(false),
-    m_chargeNeutralityNecessary(false),
-    m_ssConvention(cSS_CONVENTION_TEMPERATURE)
-{
-    warn_deprecated("ThermoPhase copy constructor", "To be removed after"
-        " Cantera 2.3 for all classes derived from ThermoPhase.");
-    // Call the assignment operator
-    *this = right;
-}
-
-ThermoPhase& ThermoPhase::operator=(const ThermoPhase& right)
-{
-    warn_deprecated("ThermoPhase assignment operator", "To be removed after"
-        " Cantera 2.3 for all classes derived from ThermoPhase.");
-    // Check for self assignment.
-    if (this == &right) {
-        return *this;
-    }
-
-    // We need to destruct first
-    for (size_t k = 0; k < m_speciesData.size(); k++) {
-        delete m_speciesData[k];
-    }
-    delete m_spthermo;
-
-    // Call the base class assignment operator
-    Phase::operator=(right);
-
-    // Pointer to the species thermodynamic property manager
-    // We own this, so we need to do a deep copy
-    m_spthermo = new MultiSpeciesThermo(*right.m_spthermo);
-
-    // Do a deep copy of species Data, because we own this
-    m_speciesData.resize(m_kk);
-    for (size_t k = 0; k < m_kk; k++) {
-        m_speciesData[k] = new XML_Node(*(right.m_speciesData[k]));
-    }
-
-    m_phi = right.m_phi;
-    m_lambdaRRT = right.m_lambdaRRT;
-    m_hasElementPotentials = right.m_hasElementPotentials;
-    m_chargeNeutralityNecessary = right.m_chargeNeutralityNecessary;
-    m_ssConvention = right.m_ssConvention;
-    m_tlast = right.m_tlast;
-    return *this;
-}
-
-ThermoPhase* ThermoPhase::duplMyselfAsThermoPhase() const
-{
-    warn_deprecated("ThermoPhase::duplMyselfAsThermoPhase",
-        "To be removed after Cantera 2.3.");
-    return new ThermoPhase(*this);
 }
 
 void ThermoPhase::resetHf298(size_t k) {
     if (k != npos) {
-        m_spthermo->resetHf298(k);
+        m_spthermo.resetHf298(k);
     } else {
         for (size_t k = 0; k < nSpecies(); k++) {
-            m_spthermo->resetHf298(k);
+            m_spthermo.resetHf298(k);
         }
     }
     invalidateCache();
@@ -633,23 +574,9 @@ void ThermoPhase::setState_SPorSV(double Starget, double p,
     }
 }
 
-void ThermoPhase::setSpeciesThermo(MultiSpeciesThermo* spthermo)
-{
-    warn_deprecated("ThermoPhase::setSpeciesThermo",
-                    "Unused. To be removed after Cantera 2.3.");
-    if (m_spthermo && m_spthermo != spthermo) {
-        delete m_spthermo;
-    }
-    m_spthermo = spthermo;
-}
-
 MultiSpeciesThermo& ThermoPhase::speciesThermo(int k)
 {
-    if (!m_spthermo) {
-        throw CanteraError("ThermoPhase::speciesThermo()",
-                           "species reference state thermo manager was not set");
-    }
-    return *m_spthermo;
+    return m_spthermo;
 }
 
 void ThermoPhase::initThermoFile(const std::string& inputFile,
@@ -670,46 +597,15 @@ void ThermoPhase::initThermoXML(XML_Node& phaseNode, const std::string& id)
     if (phaseNode.hasChild("state")) {
         setStateFromXML(phaseNode.child("state"));
     }
-    xMol_Ref.resize(m_kk);
-    getMoleFractions(&xMol_Ref[0]);
-}
-
-void ThermoPhase::setReferenceComposition(const doublereal* const x)
-{
-    warn_deprecated("ThermoPhase::setReferenceComposition",
-        "To be removed after Cantera 2.3.");
-    xMol_Ref.resize(m_kk);
-    if (x) {
-        copy(x, x + m_kk, xMol_Ref.begin());
-    } else {
-        getMoleFractions(&xMol_Ref[0]);
-    }
-    double sum = accumulate(xMol_Ref.begin(), xMol_Ref.end(), -1.0);
-    if (fabs(sum) > 1.0E-11) {
-        throw CanteraError("ThermoPhase::setReferenceComposition",
-                           "input mole fractions don't sum to 1.0");
-    }
-}
-
-void ThermoPhase::getReferenceComposition(doublereal* const x) const
-{
-    warn_deprecated("ThermoPhase::getReferenceComposition",
-        "To be removed after Cantera 2.3.");
-    copy(xMol_Ref.begin(), xMol_Ref.end(), x);
 }
 
 void ThermoPhase::initThermo()
 {
     // Check to see that all of the species thermo objects have been initialized
-    if (!m_spthermo->ready(m_kk)) {
+    if (!m_spthermo.ready(m_kk)) {
         throw CanteraError("ThermoPhase::initThermo()",
                            "Missing species thermo data");
     }
-}
-void ThermoPhase::installSlavePhases(XML_Node* phaseNode)
-{
-    warn_deprecated("ThermoPhase::installSlavePhases",
-                    "Unused. To be removed after Cantera 2.3.");
 }
 
 bool ThermoPhase::addSpecies(shared_ptr<Species> spec)
@@ -721,8 +617,7 @@ bool ThermoPhase::addSpecies(shared_ptr<Species> spec)
     bool added = Phase::addSpecies(spec);
     if (added) {
         spec->thermo->validate(spec->name);
-        m_spthermo->install_STIT(m_kk-1, spec->thermo);
-        xMol_Ref.push_back(0.0);
+        m_spthermo.install_STIT(m_kk-1, spec->thermo);
     }
     return added;
 }
@@ -740,7 +635,7 @@ void ThermoPhase::modifySpecies(size_t k, shared_ptr<Species> spec)
                            spec->name, speciesName(k), k);
     }
     spec->thermo->validate(spec->name);
-    m_spthermo->modifySpecies(k, spec->thermo);
+    m_spthermo.modifySpecies(k, spec->thermo);
 }
 
 void ThermoPhase::saveSpeciesData(const size_t k, const XML_Node* const data)

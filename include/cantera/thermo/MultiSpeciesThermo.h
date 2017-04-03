@@ -49,20 +49,10 @@ public:
     //! Constructor
     MultiSpeciesThermo();
 
-    //! @deprecated To be removed after Cantera 2.3.
-    MultiSpeciesThermo(const MultiSpeciesThermo& b);
-    //! @deprecated To be removed after Cantera 2.3.
-    MultiSpeciesThermo& operator=(const MultiSpeciesThermo& b);
+    // MultiSpeciesThermo objects are not copyable or assignable
+    MultiSpeciesThermo(const MultiSpeciesThermo& b) = delete;
+    MultiSpeciesThermo& operator=(const MultiSpeciesThermo& b) = delete;
     virtual ~MultiSpeciesThermo() {}
-
-    //! Duplication routine for objects derived from MultiSpeciesThermo
-    /*!
-     * This function can be used to duplicate objects derived from
-     * MultiSpeciesThermo even if the application only has a pointer to
-     * MultiSpeciesThermo to work with.
-     * @deprecated To be removed after Cantera 2.3.
-     */
-    virtual MultiSpeciesThermo* duplMyselfAsSpeciesThermo() const;
 
     //! Install a new species thermodynamic property parameterization for one
     //! species.
@@ -82,17 +72,6 @@ public:
     virtual void modifySpecies(size_t index,
                                shared_ptr<SpeciesThermoInterpType> spec);
 
-    //! Install a PDSS object to handle the reference state thermodynamics
-    //! calculation
-    /*!
-     * @param k           species index
-     * @param PDSS_ptr    Pressure dependent standard state (PDSS) object
-     *                    that will handle the reference state calc
-     * @param vpssmgr_ptr Pointer to the variable pressure standard state
-     *                    manager that handles the PDSS object.
-     */
-    void installPDSShandler(size_t k, PDSS* PDSS_ptr, VPSSMgr* vpssmgr_ptr);
-
     //! Like update(), but only updates the single species k.
     /*!
      * @param k       species index
@@ -100,10 +79,23 @@ public:
      * @param cp_R    Vector of Dimensionless heat capacities. (length m_kk).
      * @param h_RT    Vector of Dimensionless enthalpies. (length m_kk).
      * @param s_R     Vector of Dimensionless entropies. (length m_kk).
+     * @deprecated    Use update_single() instead.
+     *                To be removed after Cantera 2.4.
      */
     virtual void update_one(size_t k, doublereal T, doublereal* cp_R,
                             doublereal* h_RT,
                             doublereal* s_R) const;
+
+    //! Like update_one, but without applying offsets to the output pointers
+    /*!
+     * @param k       species index
+     * @param T       Temperature (Kelvin)
+     * @param cp_R    Dimensionless heat capacity
+     * @param h_RT    Dimensionless enthalpy
+     * @param s_R     Dimensionless entropy
+     */
+    virtual void update_single(size_t k, double T, double* cp_R,
+                               double* h_RT, double* s_R) const;
 
     //! Compute the reference-state properties for all species.
     /*!
@@ -252,10 +244,6 @@ protected:
 
     //! indicates if data for species has been installed
     std::vector<bool> m_installed;
-
-    //! Make the class VPSSMgr a friend because we need to access the function
-    //! provideSTIT()
-    friend class VPSSMgr;
 };
 
 }

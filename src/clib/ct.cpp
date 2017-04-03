@@ -354,10 +354,10 @@ extern "C" {
         }
     }
 
-    int thermo_eosType(int n)
+    int thermo_getEosType(int n, size_t leneos, char* eos)
     {
         try {
-            return ThermoCabinet::item(n).eosType();
+            return copyString(ThermoCabinet::item(n).type(), eos, leneos);
         } catch (...) {
             return handleAllExceptions(-1, ERR);
         }
@@ -901,10 +901,10 @@ extern "C" {
     }
 
     //-------------------------------------
-    int kin_type(int n)
+    int kin_getType(int n, size_t lennm, char* nm)
     {
         try {
-            return KineticsCabinet::item(n).type();
+            return copyString(KineticsCabinet::item(n).kineticsType(), nm, lennm);
         } catch (...) {
             return handleAllExceptions(-1, ERR);
         }
@@ -1423,6 +1423,25 @@ extern "C" {
     {
         try {
             return copyString(CANTERA_VERSION, buf, buflen);
+        } catch (...) {
+            return handleAllExceptions(-1, ERR);
+        }
+    }
+
+    int ct_getGitCommit(int buflen, char* buf)
+    {
+        try {
+            return copyString(gitCommit(), buf, buflen);
+        } catch (...) {
+            return handleAllExceptions(-1, ERR);
+        }
+    }
+
+    int ct_suppress_thermo_warnings(int suppress)
+    {
+        try {
+            suppress_thermo_warnings(static_cast<bool>(suppress));
+            return 0;
         } catch (...) {
             return handleAllExceptions(-1, ERR);
         }

@@ -12,6 +12,7 @@
 #include "cantera/kinetics/Kinetics.h"
 #include "cantera/kinetics/Reaction.h"
 #include "cantera/base/stringUtils.h"
+#include <unordered_set>
 
 using namespace std;
 
@@ -29,60 +30,6 @@ Kinetics::Kinetics() :
 }
 
 Kinetics::~Kinetics() {}
-
-Kinetics::Kinetics(const Kinetics& right)
-{
-    warn_deprecated("Kinetics copy constructor", "To be removed after"
-        " Cantera 2.3 for all classes derived from Kinetics.");
-    // Call the assignment operator
-    *this = right;
-}
-
-Kinetics& Kinetics::operator=(const Kinetics& right)
-{
-    warn_deprecated("Kinetics assignment operator", "To be removed after"
-        " Cantera 2.3 for all classes derived from Kinetics.");
-    // Check for self assignment.
-    if (this == &right) {
-        return *this;
-    }
-
-    m_reactantStoich = right.m_reactantStoich;
-    m_revProductStoich = right.m_revProductStoich;
-    m_irrevProductStoich = right.m_irrevProductStoich;
-    m_kk = right.m_kk;
-    m_perturb = right.m_perturb;
-    m_reactions = right.m_reactions;
-    m_thermo = right.m_thermo; // DANGER -> shallow pointer copy
-    m_start = right.m_start;
-    m_phaseindex = right.m_phaseindex;
-    m_surfphase = right.m_surfphase;
-    m_rxnphase = right.m_rxnphase;
-    m_mindim = right.m_mindim;
-    m_rfn = right.m_rfn;
-    m_rkcn = right.m_rkcn;
-    m_ropf = right.m_ropf;
-    m_ropr = right.m_ropr;
-    m_ropnet = right.m_ropnet;
-    m_skipUndeclaredSpecies = right.m_skipUndeclaredSpecies;
-
-    return *this;
-}
-
-Kinetics* Kinetics::duplMyselfAsKinetics(const std::vector<thermo_t*> & tpVector) const
-{
-    warn_deprecated("Kinetics::duplMyselfAsKinetics",
-        "To be removed after Cantera 2.3.");
-    Kinetics* ko = new Kinetics(*this);
-    ko->assignShallowPointers(tpVector);
-    return ko;
-}
-
-int Kinetics::type() const
-{
-    warn_deprecated("Kinetics::type", "To be removed after Cantera 2.3.");
-    return 0;
-}
 
 void Kinetics::checkReactionIndex(size_t i) const
 {
@@ -126,36 +73,17 @@ void Kinetics::checkSpeciesArraySize(size_t kk) const
     }
 }
 
-void Kinetics::assignShallowPointers(const std::vector<thermo_t*> & tpVector)
-{
-    if (tpVector.size() != m_thermo.size()) {
-        throw CanteraError(" Kinetics::assignShallowPointers",
-                           " Number of ThermoPhase objects arent't the same");
-    }
-    for (size_t i = 0; i < tpVector.size(); i++) {
-        ThermoPhase* ntp = tpVector[i];
-        ThermoPhase* otp = m_thermo[i];
-        if (ntp->id() != otp->id()) {
-            throw CanteraError(" Kinetics::assignShallowPointers",
-                               " id() of the ThermoPhase objects isn't the same");
-        }
-        if (ntp->type() != otp->type()) {
-            throw CanteraError(" Kinetics::assignShallowPointers",
-                               " type() of the ThermoPhase objects isn't the same");
-        }
-        if (ntp->nSpecies() != otp->nSpecies()) {
-            throw CanteraError(" Kinetics::assignShallowPointers",
-                               " Number of ThermoPhase objects isn't the same");
-        }
-        m_thermo[i] = tpVector[i];
-    }
-}
-
 std::pair<size_t, size_t> Kinetics::checkDuplicates(bool throw_err) const
 {
     //! Map of (key indicating participating species) to reaction numbers
     std::map<size_t, std::vector<size_t> > participants;
     std::vector<std::map<int, double> > net_stoich;
+    std::unordered_set<size_t> unmatched_duplicates;
+    for (size_t i = 0; i < m_reactions.size(); i++) {
+        if (m_reactions[i]->duplicate) {
+            unmatched_duplicates.insert(i);
+        }
+    }
 
     for (size_t i = 0; i < m_reactions.size(); i++) {
         // Get data about this reaction
@@ -178,10 +106,13 @@ std::pair<size_t, size_t> Kinetics::checkDuplicates(bool throw_err) const
         vector<size_t>& related = participants[key];
         for (size_t m = 0; m < related.size(); m++) {
             Reaction& other = *m_reactions[related[m]];
-            if (R.reaction_type != other.reaction_type) {
+            if (R.duplicate && other.duplicate) {
+                // marked duplicates
+                unmatched_duplicates.erase(i);
+                unmatched_duplicates.erase(related[m]);
+                continue;
+            } else if (R.reaction_type != other.reaction_type) {
                 continue; // different reaction types
-            } else if (R.duplicate && other.duplicate) {
-                continue; // marked duplicates
             }
             doublereal c = checkDuplicateStoich(net_stoich[i], net_stoich[m]);
             if (c == 0) {
@@ -223,7 +154,7 @@ std::pair<size_t, size_t> Kinetics::checkDuplicates(bool throw_err) const
                 }
             }
             if (throw_err) {
-                throw CanteraError("installReaction",
+                throw CanteraError("Kinetics::checkDuplicates",
                         "Undeclared duplicate reactions detected:\n"
                         "Reaction {}: {}\nReaction {}: {}\n",
                         i+1, other.equation(), m+1, R.equation());
@@ -232,6 +163,16 @@ std::pair<size_t, size_t> Kinetics::checkDuplicates(bool throw_err) const
             }
         }
         participants[key].push_back(i);
+    }
+    if (unmatched_duplicates.size()) {
+        size_t i = *unmatched_duplicates.begin();
+        if (throw_err) {
+            throw CanteraError("Kinetics::checkDuplicates",
+                "No duplicate found for declared duplicate reaction number {}"
+                " ({})", i, m_reactions[i]->equation());
+        } else {
+            return {i, i};
+        }
     }
     return {npos, npos};
 }
@@ -511,12 +452,6 @@ void Kinetics::resizeSpecies()
         m_kk += m_thermo[i]->nSpecies();
     }
     invalidateCache();
-}
-
-void Kinetics::finalize()
-{
-    warn_deprecated("Kinetics::finalize",
-                    "No longer needed. To be removed after Cantera 2.3.");
 }
 
 bool Kinetics::addReaction(shared_ptr<Reaction> r)

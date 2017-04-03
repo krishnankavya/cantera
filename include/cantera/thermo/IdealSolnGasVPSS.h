@@ -17,16 +17,6 @@
 
 namespace Cantera
 {
-/*!
-  * @name CONSTANTS
-  * Models for the Standard State of an IdealSolnPhase
-  * @deprecated To be removed after Cantera 2.3.
-  */
-//@{
-const int cIdealSolnGasPhaseG = 6009;
-const int cIdealSolnGasPhase0 = 6010;
-const int cIdealSolnGasPhase1 = 6011;
-const int cIdealSolnGasPhase2 = 6012;
 
 /**
  * @ingroup thermoprops
@@ -47,18 +37,26 @@ public:
     /// Create an object from an XML input file
     IdealSolnGasVPSS(const std::string& infile, std::string id="");
 
-    IdealSolnGasVPSS(const IdealSolnGasVPSS&);
-    IdealSolnGasVPSS& operator=(const IdealSolnGasVPSS&);
-    virtual ThermoPhase* duplMyselfAsThermoPhase() const;
-
     //@}
     //! @name  Utilities (IdealSolnGasVPSS)
     //@{
 
-    virtual int eosType() const;
     virtual std::string type() const {
         return "IdealSolnGas";
     }
+
+    //! Set this phase to represent an ideal gas
+    void setGasMode() { m_idealGas = true; }
+
+    //! Set this phase to represent an ideal liquid or solid solution
+    void setSolnMode() { m_idealGas = false; }
+
+    //! Set the standard concentration model
+    /*
+     * Does not apply to the ideal gas case. Must be one of 'unity',
+     * 'molar_volume', or 'solvent_volume'.
+     */
+    void setStandardConcentrationModel(const std::string& model);
 
     //! @}
     //! @name Molar Thermodynamic Properties
@@ -149,6 +147,7 @@ public:
 
     virtual bool addSpecies(shared_ptr<Species> spec);
     virtual void setParametersFromXML(const XML_Node& thermoNode);
+    virtual void initThermo();
     virtual void setToEquilState(const doublereal* lambda_RT);
     virtual void initThermoXML(XML_Node& phaseNode, const std::string& id);
 
@@ -164,7 +163,7 @@ protected:
 
     //! form of the generalized concentrations
     /*!
-     *    - 0 unity
+     *    - 0 unity (default)
      *    - 1 1/V_k
      *    - 2 1/V_0
      */

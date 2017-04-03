@@ -1296,7 +1296,7 @@ class reaction(object):
         elif self._type == 'chebyshev':
             self._kf = []
 
-        if self._type == 'edge':
+        if self._type == 'edge' or self._type == 'surface':
             if self._beta > 0:
                 electro = kfnode.addChild('electrochem')
                 electro['beta'] = repr(self._beta)
@@ -1605,7 +1605,8 @@ class surface_reaction(reaction):
     A heterogeneous chemical reaction with pressure-independent rate
     coefficient and mass-action kinetics.
     """
-    def __init__(self, equation='', kf=None, id='', order='', options=[]):
+    def __init__(self, equation='', kf=None, id='', order='', beta = 0.0,
+                 options=[]):
         """
         :param equation:
             A string specifying the chemical equation.
@@ -1625,9 +1626,16 @@ class surface_reaction(reaction):
             reaction in the file.
         :param options:
             Processing options, as described in :ref:`sec-reaction-options`.
+        :param beta:
+            Charge transfer coefficient: A number between 0 and 1 which, for a
+            charge transfer reaction, determines how much of the electric
+            potential difference between two phases is applied to the
+            activiation energy of the fwd reaction.  The remainder is applied to
+            the reverse reaction.
         """
         reaction.__init__(self, equation, kf, id, order, options)
         self._type = 'surface'
+        self._beta = beta
 
 
 class edge_reaction(reaction):
@@ -1767,28 +1775,7 @@ class phase(object):
         # dictionary of species names
         self._spmap = {}
 
-        # for each species string, check whether or not the species
-        # are imported or defined locally. If imported, the string
-        # contains a colon (:)
-        for sp in self._species:
-            icolon = sp.find(':')
-            if icolon > 0:
-                #datasrc, spnames = sp.split(':')
-                datasrc = sp[:icolon].strip()
-                spnames = sp[icolon+1:]
-                self._sp.append((datasrc+'.xml', spnames))
-            else:
-                spnames = sp
-                self._sp.append(('', spnames))
-
-            for s in spnames.split():
-                self._spmap[s] = self._dim
-
         self._rxns = reactions
-
-        # check that species have been declared
-        if len(self._spmap) == 0:
-            raise CTI_Error('No species declared for phase '+self._name)
 
         # and that only one species is declared if it is a pure phase
         if self.is_pure() and len(self._spmap) > 1:
@@ -1818,7 +1805,6 @@ class phase(object):
         """Concentration dimensions. Used in computing the units for reaction
         rate coefficients."""
         return (1, -self._dim)
-
 
     def buildrxns(self, p):
 
@@ -1865,6 +1851,34 @@ class phase(object):
 
 
     def build(self, p):
+        # for each species string, check whether or not the species
+        # are imported or defined locally. If imported, the string
+        # contains a colon (:)
+        for sp in self._species:
+            foundColon = False
+            allLocal = True
+            for token in sp.split():
+                if ':' in sp:
+                    foundColon = True
+                if token not in _speciesnames:
+                    allLocal = False
+
+            if foundColon and not allLocal:
+                icolon = sp.find(':')
+                datasrc = sp[:icolon].strip()
+                spnames = sp[icolon+1:]
+                self._sp.append((datasrc+'.xml', spnames))
+            else:
+                spnames = sp
+                self._sp.append(('', spnames))
+
+            for s in spnames.split():
+                self._spmap[s] = self._dim
+
+        # check that species have been declared
+        if len(self._spmap) == 0:
+            raise CTI_Error('No species declared for phase '+self._name)
+
         p.addComment('    phase '+self._name+'     ')
         ph = p.addChild('phase')
         ph['id'] = self._name

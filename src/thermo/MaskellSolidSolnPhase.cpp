@@ -24,36 +24,9 @@ MaskellSolidSolnPhase::MaskellSolidSolnPhase() :
     m_g0_RT(2),
     m_s0_R(2),
     h_mixing(0.0),
-    product_species_index(0),
-    reactant_species_index(1)
+    product_species_index(-1),
+    reactant_species_index(-1)
 {
-}
-
-MaskellSolidSolnPhase::MaskellSolidSolnPhase(const MaskellSolidSolnPhase& b) :
-    m_Pcurrent(OneAtm),
-    m_h0_RT(2),
-    m_cp0_R(2),
-    m_g0_RT(2),
-    m_s0_R(2),
-    h_mixing(0.0),
-    product_species_index(0),
-    reactant_species_index(1)
-{
-    *this = b;
-}
-
-MaskellSolidSolnPhase&
-MaskellSolidSolnPhase::operator=(const MaskellSolidSolnPhase& b)
-{
-    if (this != &b) {
-        VPStandardStateTP::operator=(b);
-    }
-    return *this;
-}
-
-ThermoPhase* MaskellSolidSolnPhase::duplMyselfAsThermoPhase() const
-{
-    return new MaskellSolidSolnPhase(*this);
 }
 
 void MaskellSolidSolnPhase::getActivityConcentrations(doublereal* c) const
@@ -236,17 +209,9 @@ void MaskellSolidSolnPhase::initThermoXML(XML_Node& phaseNode, const std::string
         }
 
         if (thNode.hasChild("product_species")) {
-            std::string product_species_name = thNode.child("product_species").value();
-            product_species_index = static_cast<int>(speciesIndex(product_species_name));
-            if (product_species_index == -1) {
-                throw CanteraError("MaskellSolidSolnPhase::initThermoXML",
-                                   "Species " + product_species_name + " not found.");
-            }
-            if (product_species_index == 0) {
-                reactant_species_index = 1;
-            } else {
-                reactant_species_index = 0;
-            }
+            setProductSpecies(thNode.child("product_species").value());
+        } else {
+            setProductSpecies(speciesName(0)); // default
         }
     } else {
         throw CanteraError("MaskellSolidSolnPhase::initThermoXML",
@@ -263,6 +228,16 @@ void MaskellSolidSolnPhase::initThermoXML(XML_Node& phaseNode, const std::string
     VPStandardStateTP::initThermoXML(phaseNode, id_);
 }
 
+void MaskellSolidSolnPhase::setProductSpecies(const std::string& name)
+{
+    product_species_index = static_cast<int>(speciesIndex(name));
+    if (product_species_index == -1) {
+        throw CanteraError("MaskellSolidSolnPhase::setProductSpecies",
+                           "Species '{}' not found", name);
+    }
+    reactant_species_index = (product_species_index == 0) ? 1 : 0;
+}
+
 void MaskellSolidSolnPhase::_updateThermo() const
 {
     assert(m_kk == 2);
@@ -272,7 +247,7 @@ void MaskellSolidSolnPhase::_updateThermo() const
     // Update the thermodynamic functions of the reference state.
     doublereal tnow = temperature();
     if (!cached.validate(tnow)) {
-        m_spthermo->update(tnow, m_cp0_R.data(), m_h0_RT.data(), m_s0_R.data());
+        m_spthermo.update(tnow, m_cp0_R.data(), m_h0_RT.data(), m_s0_R.data());
         for (size_t k = 0; k < m_kk; k++) {
             m_g0_RT[k] = m_h0_RT[k] - m_s0_R[k];
         }

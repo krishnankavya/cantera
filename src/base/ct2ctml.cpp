@@ -11,6 +11,7 @@
 #include "cantera/base/stringUtils.h"
 #include "../../ext/libexecstream/exec-stream.h"
 
+#include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <functional>
@@ -79,6 +80,7 @@ void ct2ctml(const char* file, const int debug)
 static std::string call_ctml_writer(const std::string& text, bool isfile)
 {
     std::string file, arg;
+
     if (isfile) {
         file = text;
         arg = "r'" + text + "'";
@@ -101,21 +103,23 @@ static std::string call_ctml_writer(const std::string& text, bool isfile)
         exec_stream_t python;
         python.set_wait_timeout(exec_stream_t::s_all, 1800000); // 30 minutes
         stringstream output_stream, error_stream;
-        std::vector<string> args;
-        args.push_back("-c");
+        python.start(pypath(), "");
+        ostream& pyin = python.in();
 
-        args.push_back(
-                    "from __future__ import print_function\n"
-                    "import sys\n"
-                    "try:\n"
-                    "    from cantera import ctml_writer\n"
-                    "except ImportError:\n"
-                    "    print('sys.path: ' + repr(sys.path) + '\\n', file=sys.stderr)\n"
-                    "    raise\n"
-                    "ctml_writer.convert(" + arg + ", outName='STDOUT')\n"
-                    "sys.exit(0)\n");
+        pyin << "from __future__ import print_function\n"
+                "if True:\n"
+                "    import sys\n"
+                "    try:\n"
+                "        from cantera import ctml_writer\n"
+                "    except ImportError:\n"
+                "        print('sys.path: ' + repr(sys.path) + '\\n', file=sys.stderr)\n"
+                "        raise\n"
+                "    ctml_writer.convert(";
+        pyin << arg << ", outName='STDOUT')\n";
+        pyin << "    sys.exit(0)\n\n";
+        pyin << "sys.exit(7)\n";
 
-        python.start(pypath(), args.begin(), args.end());
+        python.close_in();
         std::string line;
 
         while (python.out().good()) {
@@ -170,6 +174,7 @@ static std::string call_ctml_writer(const std::string& text, bool isfile)
         message << "--------------- end of converter log ---------------\n";
         writelog(message.str());
     }
+
     return python_output;
 }
 

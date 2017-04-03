@@ -18,7 +18,6 @@
 #include "cantera/thermo/ConstCpPoly.h"
 #include "cantera/thermo/AdsorbateThermo.h"
 #include "cantera/thermo/speciesThermoTypes.h"
-#include "cantera/thermo/VPSSMgr.h"
 #include "cantera/thermo/VPStandardStateTP.h"
 #include "cantera/base/ctml.h"
 #include "cantera/base/stringUtils.h"
@@ -380,6 +379,14 @@ static SpeciesThermoInterpType* newAdsorbateThermoFromXML(const XML_Node& f)
 
 SpeciesThermoInterpType* newSpeciesThermoInterpType(const XML_Node& thermo)
 {
+    std::string model = ba::to_lower_copy(thermo["model"]);
+    if (model == "hkft" || model == "ionfromneutral") {
+        // Some PDSS species use the 'thermo' node, but don't specify a
+        // SpeciesThermoInterpType parameterization. This function needs to
+        // just ignore this data.
+        return 0;
+    }
+
     // Get the children of the thermo XML node. In the next bit of code we take
     // out the comments that may have been children of the thermo XML node by
     // doing a selective copy. These shouldn't interfere with the algorithm at
@@ -397,7 +404,8 @@ SpeciesThermoInterpType* newSpeciesThermoInterpType(const XML_Node& thermo)
     for (size_t i = 1; i < tp.size(); i++) {
         if (!ba::iequals(tp[i]->name(), thermoType)) {
             throw CanteraError("newSpeciesThermoInterpType",
-                "Encountered unsupported mixed species thermo parameterizations");
+                "Encountered unsupported mixed species thermo "
+                "parameterizations, '{}' and '{}'", tp[i]->name(), thermoType);
         }
     }
     if ((tp.size() > 2 && thermoType != "nasa9") ||
@@ -408,7 +416,6 @@ SpeciesThermoInterpType* newSpeciesThermoInterpType(const XML_Node& thermo)
             "Too many regions in thermo parameterization.");
     }
 
-    std::string model = ba::to_lower_copy(thermo["model"]);
     if (model == "mineraleq3") {
         if (thermoType != "mineq3") {
             throw CanteraError("newSpeciesThermoInterpType",
@@ -427,11 +434,6 @@ SpeciesThermoInterpType* newSpeciesThermoInterpType(const XML_Node& thermo)
         return newNasa9ThermoFromXML(tp);
     } else if (thermoType == "adsorbate") {
         return newAdsorbateThermoFromXML(*tp[0]);
-    } else if (model == "hkft" || model == "ionfromneutral") {
-        // Some PDSS species use the 'thermo' node, but don't specify a
-        // SpeciesThermoInterpType parameterization. This function needs to just
-        // ignore this data.
-        return 0;
     } else {
         throw CanteraError("newSpeciesThermoInterpType",
             "Unknown species thermo model '" + thermoType + "'.");

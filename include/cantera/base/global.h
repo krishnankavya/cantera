@@ -28,35 +28,6 @@ namespace Cantera
 class XML_Node;
 class Logger;
 
-
-
-//! Return the number of errors that have been encountered so far
-/*!
- * @ingroup errorhandling
- * @deprecated Unused. To be removed after Cantera 2.3.
- */
-int nErrors();
-
-//! @copydoc Application::Messages::lastErrorMessage
-//! @deprecated Unused. To be removed after Cantera 2.3.
-std::string lastErrorMessage();
-
-//! @copydoc Application::Messages::addError
-//! @deprecated Unused. To be removed after Cantera 2.3.
-void setError(const std::string& r, const std::string& msg);
-
-//! @copydoc Application::Messages::getErrors
-//! @deprecated Unused. To be removed after Cantera 2.3.
-void showErrors(std::ostream& f);
-
-//! @copydoc Application::Messages::logErrors
-//! @deprecated Unused. To be removed after Cantera 2.3.
-void showErrors();
-
-//! @copydoc Application::Messages::popError
-//! @deprecated Unused. To be removed after Cantera 2.3.
-void popError();
-
 /*!
  * @defgroup inputfiles Input File Handling
  *
@@ -128,6 +99,9 @@ void appdelete();
 
 //! @copydoc Application::thread_complete
 void thread_complete();
+
+//! Returns the hash of the git commit from which Cantera was compiled, if known
+std::string gitCommit();
 
 //! Returns root directory where %Cantera is installed
 /*!
@@ -215,6 +189,12 @@ void suppress_deprecation_warnings();
 
 //! @copydoc Application::make_deprecation_warnings_fatal
 void make_deprecation_warnings_fatal();
+
+//! @copydoc Application::suppress_thermo_warnings
+void suppress_thermo_warnings(bool suppress=true);
+
+//! @copydoc Application::thermo_warnings_suppressed
+bool thermo_warnings_suppressed();
 
 //! @copydoc Application::Messages::setLogger
 void setLogger(Logger* logwriter);

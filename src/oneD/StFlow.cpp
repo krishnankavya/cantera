@@ -141,28 +141,6 @@ void StFlow::resetBadValues(double* xg) {
     }
 }
 
-void StFlow::setTransport(Transport& trans, bool withSoret)
-{
-    m_trans = &trans;
-    m_do_soret = withSoret;
-    m_do_multicomponent = (m_trans->transportType() == "Multi");
-
-    m_diff.resize(m_nsp*m_points);
-    if (m_do_multicomponent) {
-        m_multidiff.resize(m_nsp*m_nsp*m_points);
-        m_dthermal.resize(m_nsp, m_points, 0.0);
-    } else if (withSoret) {
-        throw CanteraError("setTransport",
-                           "Thermal diffusion (the Soret effect) "
-                           "requires using a multicomponent transport model.");
-    }
-
-    warn_deprecated("setTransport(Transport& trans, bool withSoret = false)",
-        "The withSoret argument is deprecated and unused. Use "
-        "the form of setTransport with signature setTransport(Transport& trans)."
-        "To be removed after Cantera 2.3.");
-}
-
 void StFlow::setTransport(Transport& trans)
 {
     m_trans = &trans;
@@ -172,7 +150,7 @@ void StFlow::setTransport(Transport& trans)
     if (m_do_multicomponent) {
         m_multidiff.resize(m_nsp*m_nsp*m_points);
         m_dthermal.resize(m_nsp, m_points, 0.0);
-    } 
+    }
 }
 
 void StFlow::enableSoret(bool withSoret)
@@ -374,7 +352,11 @@ void StFlow::eval(size_t jg, doublereal* xg,
             // a result, these residual equations will force the solution
             // variables to the values for the boundary object
             rsd[index(c_offset_V,0)] = V(x,0);
-            rsd[index(c_offset_T,0)] = T(x,0);
+            if (doEnergy(0)) {
+                rsd[index(c_offset_T,0)] = T(x,0);
+            } else {
+                rsd[index(c_offset_T,0)] = T(x,0) - T_fixed(0);
+            }
             rsd[index(c_offset_L,0)] = -rho_u(x,0);
 
             // The default boundary condition for species is zero flux. However,
@@ -884,7 +866,11 @@ void AxiStagnFlow::evalRightBoundary(doublereal* x, doublereal* rsd,
     // and T, and zero diffusive flux for all species.
     rsd[index(0,j)] = rho_u(x,j);
     rsd[index(1,j)] = V(x,j);
-    rsd[index(2,j)] = T(x,j);
+    if (m_do_energy[j]) {
+        rsd[index(2,j)] = T(x,j);
+    } else {
+        rsd[index(c_offset_T, j)] = T(x,j) - T_fixed(j);
+    }
     rsd[index(c_offset_L, j)] = lambda(x,j) - lambda(x,j-1);
     diag[index(c_offset_L, j)] = 0;
     doublereal sum = 0.0;

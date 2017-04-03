@@ -35,54 +35,9 @@ class ThermoPhase;
 class PDSS_IonsFromNeutral : public PDSS_Nondimensional
 {
 public:
-    //! @name  Constructors
-    //! @{
+    //! Default constructor
+    PDSS_IonsFromNeutral();
 
-    //! Constructor
-    /*!
-     * @param tp       Pointer to the ThermoPhase object pertaining to the phase
-     * @param spindex  Species index of the species in the phase
-     */
-    PDSS_IonsFromNeutral(VPStandardStateTP* tp, size_t spindex);
-
-    //! Constructor that initializes the object by examining the input file
-    //! of the ThermoPhase object
-    /*!
-     *  This function calls the constructPDSSFile member function.
-     *
-     *  @param tp        Pointer to the ThermoPhase object pertaining to the phase
-     *  @param spindex   Species index of the species in the phase
-     *  @param inputFile String name of the input file
-     *  @param id        String name of the phase in the input file. The default
-     *                   is the empty string, in which case the first phase in the
-     *                   file is used.
-     * @deprecated To be removed after Cantera 2.3.
-     */
-    PDSS_IonsFromNeutral(VPStandardStateTP* tp, size_t spindex,
-                         const std::string& inputFile, const std::string& id = "");
-
-    //! Constructor that initializes the object by examining the input file
-    //! of the ThermoPhase object
-    /*!
-     * This function calls the constructPDSSXML member function.
-     *
-     * @param vptp_ptr    Pointer to the ThermoPhase object pertaining to the phase
-     * @param spindex     Species index of the species in the phase
-     * @param speciesNode Reference to the species XML tree.
-     * @param phaseRef    Reference to the XML tree containing the phase information.
-     * @param spInstalled Boolean indicating whether the species is installed
-     *                    yet or not.
-     */
-    PDSS_IonsFromNeutral(VPStandardStateTP* vptp_ptr, size_t spindex, const XML_Node& speciesNode,
-                         const XML_Node& phaseRef, bool spInstalled);
-
-    PDSS_IonsFromNeutral(const PDSS_IonsFromNeutral& b);
-    PDSS_IonsFromNeutral& operator=(const PDSS_IonsFromNeutral& b);
-    virtual PDSS* duplMyselfAsPDSS() const;
-    virtual void initAllPtrs(VPStandardStateTP* vptp_ptr, VPSSMgr* vpssmgr_ptr,
-                             MultiSpeciesThermo* spthermo_ptr);
-
-    //! @}
     //! @name  Molar Thermodynamic Properties of the Species Standard State in the Solution
     //! @{
 
@@ -124,8 +79,6 @@ public:
     //! @name Mechanical Equation of State Properties
     //! @{
 
-    virtual void setTemperature(doublereal temp);
-    virtual doublereal temperature() const;
     virtual void setState_TP(doublereal temp, doublereal pres);
     virtual void setState_TR(doublereal temp, doublereal rho);
 
@@ -133,45 +86,11 @@ public:
     //! @name Initialization of the Object
     //! @{
 
-    //! Initialization of a PDSS object using an input XML file.
-    /*!
-     * This routine is a precursor to constructPDSSXML(XML_Node*)
-     * routine, which does most of the work.
-     *
-     * @param vptp_ptr    Pointer to the Variable pressure ThermoPhase object
-     * @param spindex     Species index within the phase
-     * @param inputFile   XML file containing the description of the phase
-     * @param id          Optional parameter identifying the name of the
-     *                    phase. If none is given, the first XML
-     *                    phase element will be used.
-     * @deprecated To be removed after Cantera 2.3.
-     */
-    void constructPDSSFile(VPStandardStateTP* vptp_ptr, size_t spindex,
-                           const std::string& inputFile, const std::string& id);
+    void setParent(VPStandardStateTP* phase, size_t k);
 
-    //! Initialization of a PDSS object using an XML tree
-    /*!
-     * This routine is a driver for the initialization of the object.
-     *
-     *   basic logic:
-     *     - initThermo()                 (cascade)
-     *     - getStuff from species Part of XML file
-     *     - initThermoXML(phaseNode)      (cascade)
-     *
-     * @param vptp_ptr   Pointer to the Variable pressure ThermoPhase object
-     * @param spindex    Species index within the phase
-     * @param speciesNode  Reference to the phase Information for the species
-     *                     that this standard state refers to
-     * @param phaseNode  Reference to the phase Information for the phase
-     *                   that owns this species.
-     * @param id         Optional parameter identifying the name of the
-     *                   phase. If none is given, the first XML
-     *                   phase element will be used.
-     */
-    void constructPDSSXML(VPStandardStateTP* vptp_ptr, size_t spindex,
-                          const XML_Node& speciesNode,
-                          const XML_Node& phaseNode, const std::string& id);
+    virtual bool useSTITbyPDSS() const { return true; }
 
+    void setParametersFromXML(const XML_Node& speciesNode);
     virtual void initThermo();
     //@}
 
@@ -181,6 +100,8 @@ protected:
      *  This is a shallow pointer.
      */
     const ThermoPhase* neutralMoleculePhase_;
+
+    std::map<std::string, double> neutralSpeciesMultipliers_;
 
 public:
     //! Number of neutral molecule species that make up the stoichiometric

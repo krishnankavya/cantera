@@ -50,7 +50,7 @@ extern "C" {
     CANTERA_CAPI int thermo_print(int nth, int show_thermo, double threshold);
     CANTERA_CAPI double thermo_nAtoms(int n, size_t k, size_t m);
     CANTERA_CAPI int thermo_addElement(int n, const char* name, double weight);
-    CANTERA_CAPI int thermo_eosType(int n);
+    CANTERA_CAPI int thermo_getEosType(int n, size_t leneos, char* eos);
     CANTERA_CAPI double thermo_refPressure(int n);
     CANTERA_CAPI double thermo_minTemp(int n, int k);
     CANTERA_CAPI double thermo_maxTemp(int n, int k);
@@ -131,7 +131,7 @@ extern "C" {
     CANTERA_CAPI int kin_setMultiplier(int n, int i, double v);
 
     CANTERA_CAPI int kin_isReversible(int n, int i);
-    CANTERA_CAPI int kin_type(int n);
+    CANTERA_CAPI int kin_getType(int n, size_t len, char* name);
     CANTERA_CAPI size_t kin_start(int n, int p);
     CANTERA_CAPI size_t kin_speciesIndex(int n, const char* nm, const char* ph);
     CANTERA_CAPI int kin_advanceCoverages(int n, double tstep);
@@ -157,6 +157,8 @@ extern "C" {
     CANTERA_CAPI int ct_addCanteraDirectory(size_t buflen, const char* buf);
     CANTERA_CAPI int ct_getDataDirectories(int buflen, char* buf, const char* sep);
     CANTERA_CAPI int ct_getCanteraVersion(int buflen, char* buf);
+    CANTERA_CAPI int ct_getGitCommit(int buflen, char* buf);
+    CANTERA_CAPI int ct_suppress_thermo_warnings(int suppress);
     CANTERA_CAPI int ct_clearStorage();
 
     CANTERA_CAPI int ct_ck2cti(const char* in_file, const char* db_file,

@@ -142,22 +142,24 @@ class chemkinConverterTest(utilities.CanteraTest):
                     outName=pjoin(self.test_work_dir, 'species-names.cti'), quiet=True)
         gas = ct.Solution('species-names.cti')
 
-        self.assertEqual(gas.n_species, 6)
+        self.assertEqual(gas.n_species, 7)
         self.assertEqual(gas.species_name(0), '(Parens)')
         self.assertEqual(gas.species_name(1), '@#$%^-2')
-        self.assertEqual(gas.species_name(2), '[xy2]*{.}')
-        self.assertEqual(gas.species_name(3), 'plus+')
-        self.assertEqual(gas.species_name(4), 'eq=uals')
-        self.assertEqual(gas.species_name(5), 'plus')
+        self.assertEqual(gas.species_index('co:lons:'), 2)
+        self.assertEqual(gas.species_name(3), '[xy2]*{.}')
+        self.assertEqual(gas.species_name(4), 'plus+')
+        self.assertEqual(gas.species_name(5), 'eq=uals')
+        self.assertEqual(gas.species_name(6), 'plus')
 
-        self.assertEqual(gas.n_reactions, 6)
+        self.assertEqual(gas.n_reactions, 7)
         nu = gas.product_stoich_coeffs() - gas.reactant_stoich_coeffs()
-        self.assertEqual(list(nu[:,0]), [-1, -1, 2, 0, 0, 0])
-        self.assertEqual(list(nu[:,1]), [-2, 3, -1, 0, 0, 0])
-        self.assertEqual(list(nu[:,2]), [-1, 0, 0, 1, 0, 0])
-        self.assertEqual(list(nu[:,3]), [3, 0, 0, -2, -1, 0])
-        self.assertEqual(list(nu[:,4]), [2, 0, 0, -1, 0, -1])
-        self.assertEqual(list(nu[:,5]), [1, 0, 0, 1, -1, -1])
+        self.assertEqual(list(nu[:,0]), [-1, -1, 0, 2, 0, 0, 0])
+        self.assertEqual(list(nu[:,1]), [-2, 3, 0, -1, 0, 0, 0])
+        self.assertEqual(list(nu[:,2]), [-1, 0, 0, 0, 1, 0, 0])
+        self.assertEqual(list(nu[:,3]), [3, 0, 0, 0, -2, -1, 0])
+        self.assertEqual(list(nu[:,4]), [2, 0, 0, 0, -1, 0, -1])
+        self.assertEqual(list(nu[:,5]), [1, 0, 0, 0, 1, -1, -1])
+        self.assertEqual(list(nu[:,6]), [2, 0, -1, 0, 0, -1, 0])
 
     def test_unterminatedSections(self):
         with self.assertRaises(ck2cti.InputParseError):
@@ -232,14 +234,22 @@ class chemkinConverterTest(utilities.CanteraTest):
         self.checkKinetics(ref, gas, [300, 800, 1450, 2800], [5e3, 1e5, 2e6])
 
         # Reactions with explicit reverse rate constants are transformed into
-        # two irreversible reactions with reactants and products swapped.
+        # two irreversible reactions with reactants and products swapped, unless
+        # the explicit reverse rate is zero so only the forward reaction is used.
         Rr = gas.reverse_rate_constants
         self.assertEqual(Rr[0], 0.0)
         self.assertEqual(Rr[1], 0.0)
+        self.assertEqual(Rr[2], 0.0)
+        self.assertEqual(Rr[3], 0.0)
+        self.assertEqual(Rr[4], 0.0)
         Rstoich = gas.reactant_stoich_coeffs()
         Pstoich = gas.product_stoich_coeffs()
-        self.assertEqual(list(Rstoich[:,0]), list(Pstoich[:,1]))
-        self.assertEqual(list(Rstoich[:,1]), list(Pstoich[:,0]))
+        self.assertEqual(list(Rstoich[:, 0]), list(Pstoich[:, 1]))
+        self.assertEqual(list(Rstoich[:, 1]), list(Pstoich[:, 0]))
+        self.assertEqual(list(Rstoich[:, 2]), list(Pstoich[:, 3]))
+        self.assertEqual(list(Rstoich[:, 3]), list(Pstoich[:, 2]))
+
+        self.assertEqual(gas.n_reactions, 5)
 
     def test_explicit_forward_order(self):
         convertMech(pjoin(self.test_data_dir, 'explicit-forward-order.inp'),
@@ -311,6 +321,13 @@ class chemkinConverterTest(utilities.CanteraTest):
                         outName=pjoin(self.test_work_dir, 'h2o2_transport_missing_species.cti'),
                         quiet=True)
 
+    def test_transport_extra_column_entries(self):
+        with self.assertRaises(ck2cti.InputParseError):
+            convertMech(pjoin(self.test_data_dir, 'h2o2.inp'),
+                        transportFile=pjoin(self.test_data_dir, 'h2o2-extra-column-entries-tran.dat'),
+                        outName=pjoin(self.test_work_dir, 'h2o2_extra-column-entries-tran.cti'),
+                        quiet=True)
+
     def test_transport_duplicate_species(self):
         with self.assertRaises(ck2cti.InputParseError):
             convertMech(pjoin(self.test_data_dir, 'h2o2.inp'),
@@ -347,7 +364,7 @@ class chemkinConverterTest(utilities.CanteraTest):
             text = f.read()
         self.assertIn('Generic mechanism header', text)
         self.assertIn('Single PLOG reaction', text)
-        self.assertIn('PLOG with duplicate rates and negative A-factors', text)
+        self.assertIn('Multiple PLOG expressions at the same pressure', text)
 
     def test_reaction_comments2(self):
         convertMech(pjoin(self.test_data_dir, 'explicit-third-bodies.inp'),
@@ -442,3 +459,33 @@ class CtmlConverterTest(utilities.CanteraTest):
         self.assertNear(R.orders.get('OH'), 0.15)
         self.assertTrue(R.allow_negative_orders)
         self.assertNear(R.orders.get('H2'), -0.25)
+
+    def test_long_source_input(self):
+        """
+        Here we are testing if passing a very long string will result in a
+        Solution object. This should result in a temp file creation in most OS's
+        """
+
+        gas = ct.Solution(pjoin(self.test_data_dir, 'pdep-test.cti'))
+
+        with open(pjoin(self.test_data_dir, 'pdep-test.cti'), 'r') as f:
+            data = f.read()
+        data_size_2048kB = data + ' '*2048*1024
+        gas2 = ct.Solution(source=data_size_2048kB)
+
+        self.assertEqual(gas.n_reactions, gas2.n_reactions)
+
+    def test_short_source_input(self):
+        """
+        Here we are testing if passing a short string will result in a Solution
+        object. This should not result in a temp file creation in most OS's
+        """
+
+        gas = ct.Solution(pjoin(self.test_data_dir, 'pdep-test.cti'))
+
+        with open(pjoin(self.test_data_dir, 'pdep-test.cti'), 'r') as f:
+            data = f.read()
+        data_size_32kB = data + ' '*18000
+        gas2 = ct.Solution(source=data_size_32kB)
+
+        self.assertEqual(gas.n_reactions, gas2.n_reactions)

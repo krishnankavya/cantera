@@ -26,32 +26,6 @@ LatticePhase::LatticePhase() :
 {
 }
 
-LatticePhase::LatticePhase(const LatticePhase& right) :
-    m_Pref(OneAtm),
-    m_Pcurrent(OneAtm),
-    m_speciesMolarVolume(0),
-    m_site_density(0.0)
-{
-    *this = right;
-}
-
-LatticePhase& LatticePhase::operator=(const LatticePhase& right)
-{
-    if (&right != this) {
-        ThermoPhase::operator=(right);
-        m_Pref = right.m_Pref;
-        m_Pcurrent = right.m_Pcurrent;
-        m_h0_RT = right.m_h0_RT;
-        m_cp0_R = right.m_cp0_R;
-        m_g0_RT = right.m_g0_RT;
-        m_s0_R = right.m_s0_R;
-        m_vacancy = right.m_vacancy;
-        m_speciesMolarVolume = right.m_speciesMolarVolume;
-        m_site_density = right.m_site_density;
-    }
-    return *this;
-}
-
 LatticePhase::LatticePhase(const std::string& inputFile, const std::string& id_)
 {
     initThermoFile(inputFile, id_);
@@ -60,11 +34,6 @@ LatticePhase::LatticePhase(const std::string& inputFile, const std::string& id_)
 LatticePhase::LatticePhase(XML_Node& phaseRef, const std::string& id_)
 {
     importPhase(phaseRef, this);
-}
-
-ThermoPhase* LatticePhase::duplMyselfAsThermoPhase() const
-{
-    return new LatticePhase(*this);
 }
 
 doublereal LatticePhase::enthalpy_mole() const
@@ -317,7 +286,7 @@ void LatticePhase::_updateThermo() const
 {
     doublereal tnow = temperature();
     if (m_tlast != tnow) {
-        m_spthermo->update(tnow, &m_cp0_R[0], &m_h0_RT[0], &m_s0_R[0]);
+        m_spthermo.update(tnow, &m_cp0_R[0], &m_h0_RT[0], &m_s0_R[0]);
         m_tlast = tnow;
         for (size_t k = 0; k < m_kk; k++) {
             m_g0_RT[k] = m_h0_RT[k] - m_s0_R[k];

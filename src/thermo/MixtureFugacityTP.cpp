@@ -18,45 +18,10 @@ namespace Cantera
 {
 
 MixtureFugacityTP::MixtureFugacityTP() :
-    m_Pcurrent(-1.0),
     iState_(FLUID_GAS),
     forcedState_(FLUID_UNDEFINED),
     m_Tlast_ref(-1.0)
 {
-}
-
-MixtureFugacityTP::MixtureFugacityTP(const MixtureFugacityTP& b) :
-    m_Pcurrent(-1.0),
-    iState_(FLUID_GAS),
-    forcedState_(FLUID_UNDEFINED),
-    m_Tlast_ref(-1.0)
-{
-    MixtureFugacityTP::operator=(b);
-}
-
-MixtureFugacityTP& MixtureFugacityTP::operator=(const MixtureFugacityTP& b)
-{
-    if (&b != this) {
-        // Mostly, this is a passthrough to the underlying assignment operator
-        // for the ThermoPhase parent object.
-        ThermoPhase::operator=(b);
-        // However, we have to handle data that we own.
-        m_Pcurrent = b.m_Pcurrent;
-        moleFractions_ = b.moleFractions_;
-        iState_ = b.iState_;
-        forcedState_ = b.forcedState_;
-        m_Tlast_ref = b.m_Tlast_ref;
-        m_h0_RT = b.m_h0_RT;
-        m_cp0_R = b.m_cp0_R;
-        m_g0_RT = b.m_g0_RT;
-        m_s0_R = b.m_s0_R;
-    }
-    return *this;
-}
-
-ThermoPhase* MixtureFugacityTP::duplMyselfAsThermoPhase() const
-{
-    return new MixtureFugacityTP(*this);
 }
 
 int MixtureFugacityTP::standardStateConvention() const
@@ -95,7 +60,7 @@ void MixtureFugacityTP::getStandardChemPotentials(doublereal* g) const
 {
     _updateReferenceStateThermo();
     copy(m_g0_RT.begin(), m_g0_RT.end(), g);
-    double tmp = log(pressure() /m_spthermo->refPressure());
+    double tmp = log(pressure() / refPressure());
     for (size_t k = 0; k < m_kk; k++) {
         g[k] = RT() * (g[k] + tmp);
     }
@@ -110,7 +75,7 @@ void MixtureFugacityTP::getEntropy_R(doublereal* sr) const
 {
     _updateReferenceStateThermo();
     copy(m_s0_R.begin(), m_s0_R.end(), sr);
-    double tmp = log(pressure() /m_spthermo->refPressure());
+    double tmp = log(pressure() / refPressure());
     for (size_t k = 0; k < m_kk; k++) {
         sr[k] -= tmp;
     }
@@ -120,7 +85,7 @@ void MixtureFugacityTP::getGibbs_RT(doublereal* grt) const
 {
     _updateReferenceStateThermo();
     copy(m_g0_RT.begin(), m_g0_RT.end(), grt);
-    double tmp = log(pressure() /m_spthermo->refPressure());
+    double tmp = log(pressure() / refPressure());
     for (size_t k = 0; k < m_kk; k++) {
         grt[k] += tmp;
     }
@@ -130,7 +95,7 @@ void MixtureFugacityTP::getPureGibbs(doublereal* g) const
 {
     _updateReferenceStateThermo();
     scale(m_g0_RT.begin(), m_g0_RT.end(), g, RT());
-    double tmp = log(pressure() /m_spthermo->refPressure()) * RT();
+    double tmp = log(pressure() / refPressure()) * RT();
     for (size_t k = 0; k < m_kk; k++) {
         g[k] += tmp;
     }
@@ -298,21 +263,18 @@ void MixtureFugacityTP::setState_TP(doublereal t, doublereal pres)
     _updateReferenceStateThermo();
     // Depends on the mole fractions and the temperature
     updateMixingExpressions();
-    m_Pcurrent = pres;
 
     if (forcedState_ == FLUID_UNDEFINED) {
         double rhoNow = Phase::density();
         double rho = densityCalc(t, pres, iState_, rhoNow);
         if (rho > 0.0) {
             Phase::setDensity(rho);
-            m_Pcurrent = pres;
             iState_ = phaseState(true);
         } else {
             if (rho < -1.5) {
                 rho = densityCalc(t, pres, FLUID_UNDEFINED , rhoNow);
                 if (rho > 0.0) {
                     Phase::setDensity(rho);
-                    m_Pcurrent = pres;
                     iState_ = phaseState(true);
                 } else {
                     throw CanteraError("MixtureFugacityTP::setState_TP()", "neg rho");
@@ -328,7 +290,6 @@ void MixtureFugacityTP::setState_TP(doublereal t, doublereal pres)
             double rho = densityCalc(t, pres, iState_, rhoNow);
             if (rho > 0.0) {
                 Phase::setDensity(rho);
-                m_Pcurrent = pres;
                 iState_ = phaseState(true);
                 if (iState_ >= FLUID_LIQUID_0) {
                     throw CanteraError("MixtureFugacityTP::setState_TP()", "wrong state");
@@ -343,7 +304,6 @@ void MixtureFugacityTP::setState_TP(doublereal t, doublereal pres)
             double rho = densityCalc(t, pres, iState_, rhoNow);
             if (rho > 0.0) {
                 Phase::setDensity(rho);
-                m_Pcurrent = pres;
                 iState_ = phaseState(true);
                 if (iState_ == FLUID_GAS) {
                     throw CanteraError("MixtureFugacityTP::setState_TP()", "wrong state");
@@ -364,8 +324,6 @@ void MixtureFugacityTP::setState_TR(doublereal T, doublereal rho)
     doublereal mv = molarVolume();
     // depends on mole fraction and temperature
     updateMixingExpressions();
-
-    m_Pcurrent = pressureCalc(T, mv);
     iState_ = phaseState(true);
 }
 
@@ -838,7 +796,7 @@ void MixtureFugacityTP::_updateReferenceStateThermo() const
     // If the temperature has changed since the last time these
     // properties were computed, recompute them.
     if (m_Tlast_ref != Tnow) {
-        m_spthermo->update(Tnow, &m_cp0_R[0], &m_h0_RT[0], &m_s0_R[0]);
+        m_spthermo.update(Tnow, &m_cp0_R[0], &m_h0_RT[0], &m_s0_R[0]);
         m_Tlast_ref = Tnow;
 
         // update the species Gibbs functions

@@ -32,79 +32,6 @@ Phase::Phase() :
 {
 }
 
-Phase::Phase(const Phase& right) :
-    m_kk(0),
-    m_ndim(3),
-    m_undefinedElementBehavior(right.m_undefinedElementBehavior),
-    m_xml(0),
-    m_id("<phase>"),
-    m_temp(0.001),
-    m_dens(0.001),
-    m_mmw(0.0),
-    m_stateNum(-1),
-    m_mm(0),
-    m_elem_type(0)
-{
-    // Use the assignment operator to do the actual copying
-    operator=(right);
-}
-
-Phase& Phase::operator=(const Phase& right)
-{
-    // Check for self assignment.
-    if (this == &right) {
-        return *this;
-    }
-
-    // Handle our own data
-    m_kk = right.m_kk;
-    m_ndim = right.m_ndim;
-    m_undefinedElementBehavior = right.m_undefinedElementBehavior;
-    m_temp = right.m_temp;
-    m_dens = right.m_dens;
-    m_mmw = right.m_mmw;
-    m_ym = right.m_ym;
-    m_y = right.m_y;
-    m_molwts = right.m_molwts;
-    m_rmolwts = right.m_rmolwts;
-    m_stateNum = -1;
-
-    m_speciesNames = right.m_speciesNames;
-    m_speciesComp = right.m_speciesComp;
-    m_speciesCharge = right.m_speciesCharge;
-    m_speciesSize = right.m_speciesSize;
-    m_mm = right.m_mm;
-    m_atomicWeights = right.m_atomicWeights;
-    m_atomicNumbers = right.m_atomicNumbers;
-    m_elementNames = right.m_elementNames;
-    m_entropy298 = right.m_entropy298;
-    m_elem_type = right.m_elem_type;
-
-    // This is a little complicated. -> Because we delete m_xml in the
-    // destructor, we own m_xml completely, and we need to have our own
-    // individual copies of the XML data tree in each object
-    if (m_xml) {
-        XML_Node* rroot = &m_xml->root();
-        delete rroot;
-        m_xml = 0;
-    }
-    if (right.m_xml) {
-        XML_Node *rroot = &right.m_xml->root();
-        XML_Node *root_xml = new XML_Node();
-        rroot->copy(root_xml);
-        m_xml = findXMLPhase(root_xml, right.m_xml->id());
-        if (!m_xml) {
-          throw CanteraError("Phase::operator=()", "Confused: Couldn't find original phase " + right.m_xml->id());
-        }
-        if (&m_xml->root() != root_xml) {
-          throw CanteraError("Phase::operator=()", "confused: root changed");
-        }
-    }
-    m_id = right.m_id;
-    m_name = right.m_name;
-    return *this;
-}
-
 Phase::~Phase()
 {
     if (m_xml) {
@@ -250,7 +177,8 @@ void Phase::getAtoms(size_t k, double* atomArray) const
 
 size_t Phase::speciesIndex(const std::string& nameStr) const
 {
-    if (nameStr.find(':') != npos) {
+    size_t loc = getValue(m_speciesIndices, ba::to_lower_copy(nameStr), npos);
+    if (loc == npos && nameStr.find(':') != npos) {
         std::string pn;
         std::string sn = ba::to_lower_copy(parseSpeciesName(nameStr, pn));
         if (pn == "" || pn == m_name || pn == m_id) {
@@ -259,7 +187,7 @@ size_t Phase::speciesIndex(const std::string& nameStr) const
             return npos;
         }
     } else {
-        return getValue(m_speciesIndices, ba::to_lower_copy(nameStr), npos);
+        return loc;
     }
 }
 

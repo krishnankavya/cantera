@@ -8,48 +8,15 @@
 // This file is part of Cantera. See License.txt in the top-level directory or
 // at http://www.cantera.org/license.txt for license and copyright information.
 
-#include "cantera/thermo/mix_defs.h"
 #include "cantera/thermo/ConstDensityThermo.h"
 #include "cantera/base/ctml.h"
 
 namespace Cantera
 {
 
-ConstDensityThermo::ConstDensityThermo(const ConstDensityThermo& right)
-{
-    *this = right;
-}
-
-ConstDensityThermo& ConstDensityThermo::operator=(const ConstDensityThermo& right)
-{
-    if (&right == this) {
-        return *this;
-    }
-
-    m_h0_RT = right.m_h0_RT;
-    m_cp0_R = right.m_cp0_R;
-    m_g0_RT = right.m_g0_RT;
-    m_s0_R = right.m_s0_R;
-
-    return *this;
-
-}
-
-ThermoPhase* ConstDensityThermo::duplMyselfAsThermoPhase() const
-{
-    return new ConstDensityThermo(*this);
-}
-
-int ConstDensityThermo::eosType() const
-{
-    warn_deprecated("ConstDensityThermo::eosType",
-                    "To be removed after Cantera 2.3.");
-    return cIncompressible;
-}
-
 doublereal ConstDensityThermo::enthalpy_mole() const
 {
-    doublereal p0 = m_spthermo->refPressure();
+    doublereal p0 = refPressure();
     return RT() * mean_X(enthalpy_RT()) + (pressure() - p0)/molarDensity();
 }
 
@@ -97,7 +64,7 @@ doublereal ConstDensityThermo::standardConcentration(size_t k) const
 
 void ConstDensityThermo::getChemPotentials(doublereal* mu) const
 {
-    doublereal vdp = (pressure() - m_spthermo->refPressure())/
+    doublereal vdp = (pressure() - refPressure())/
                      molarDensity();
     const vector_fp& g_RT = gibbs_RT();
     for (size_t k = 0; k < m_kk; k++) {
@@ -128,8 +95,8 @@ void ConstDensityThermo::_updateThermo() const
 {
     doublereal tnow = temperature();
     if (m_tlast != tnow) {
-        m_spthermo->update(tnow, &m_cp0_R[0], &m_h0_RT[0],
-                           &m_s0_R[0]);
+        m_spthermo.update(tnow, &m_cp0_R[0], &m_h0_RT[0],
+                          &m_s0_R[0]);
         m_tlast = tnow;
         for (size_t k = 0; k < m_kk; k++) {
             m_g0_RT[k] = m_h0_RT[k] - m_s0_R[k];

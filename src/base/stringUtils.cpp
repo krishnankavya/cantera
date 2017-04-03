@@ -31,41 +31,6 @@ namespace ba = boost::algorithm;
 namespace Cantera
 {
 
-std::string fp2str(const double x, const std::string& fmt)
-{
-    warn_deprecated("fp2str", "Unused. To be removed after Cantera 2.3. "
-                    "Use fmt::format instead.");
-    char buf[64];
-    int n = SNPRINTF(buf, 63, fmt.c_str(), x);
-    if (n > 0) {
-        buf[63] = '\0';
-        return std::string(buf);
-    }
-    return std::string(" ");
-}
-
-std::string int2str(const int n, const std::string& fmt)
-{
-    warn_deprecated("int2str", "Unused. To be removed after Cantera 2.3. "
-                    "Use fmt::format instead.");
-    char buf[30];
-    int m = SNPRINTF(buf, 30, fmt.c_str(), n);
-    if (m > 0) {
-        buf[29] = '\0';
-        return std::string(buf);
-    }
-    return std::string(" ");
-}
-
-std::string int2str(const size_t n)
-{
-    warn_deprecated("int2str", "Unused. To be removed after Cantera 2.3. "
-                    "Use fmt::format instead.");
-    std::stringstream ss;
-    ss << n;
-    return ss.str();
-}
-
 std::string vec2str(const vector_fp& v, const std::string& fmt,
                     const std::string& sep)
 {
@@ -79,25 +44,6 @@ std::string vec2str(const vector_fp& v, const std::string& fmt,
         }
     }
     return o.str();
-}
-
-
-std::string lowercase(const std::string& s)
-{
-    warn_deprecated("lowercase", "Use boost::algorithm::to_lower_copy instead. "
-                    "To be removed after Cantera 2.3.");
-    std::string lc(s);
-    for (size_t i = 0; i < s.size(); i++) {
-        lc[i] = (char) tolower(s[i]);
-    }
-    return lc;
-}
-
-std::string stripws(const std::string& s)
-{
-    warn_deprecated("stripws", "Use boost::algorithm::trim_copy instead. "
-                    "To be removed after Cantera 2.3.");
-    return ba::trim_copy(s);
 }
 
 std::string stripnonprint(const std::string& s)
@@ -121,8 +67,9 @@ compositionMap parseCompString(const std::string& ss,
 
     size_t start = 0;
     size_t stop = 0;
+    size_t left = 0;
     while (stop < ss.size()) {
-        size_t colon = ss.find(':', start);
+        size_t colon = ss.find(':', left);
         if (colon == npos) {
             break;
         }
@@ -137,8 +84,34 @@ compositionMap parseCompString(const std::string& ss,
             throw CanteraError("parseCompString",
                                "Duplicate key: '" + name + "'.");
         }
-        x[name] = fpValueCheck(ss.substr(valstart, stop-colon-1));
+
+        double value;
+        try {
+            value = fpValueCheck(ss.substr(valstart, stop-valstart));
+        } catch (CanteraError& err) {
+            // If we have a key containing a colon, we expect this to fail. In
+            // this case, take the current substring as part of the key and look
+            // to the right of the next colon for the corresponding value.
+            // Otherwise, this is an invalid composition string.
+            std::string testname = ss.substr(start, stop-start);
+            if (testname.find_first_of(" \n\t") != npos) {
+                // Space, tab, and newline are never allowed in names
+                throw;
+            } else if (ss.substr(valstart, stop-valstart).find(':') != npos) {
+                left = colon + 1;
+                stop = 0; // Force another iteration of this loop
+                continue;
+            } else {
+                throw;
+            }
+        }
+        x[name] = value;
         start = ss.find_first_not_of(", ;\n\t", stop+1);
+        left = start;
+    }
+    if (left != start) {
+        throw CanteraError("parseCompString", "Unable to parse key-value pair:"
+            "\n'{}'", ss.substr(start, stop));
     }
     if (stop != npos && !ba::trim_copy(ss.substr(stop)).empty()) {
         throw CanteraError("parseCompString", "Found non-key:value data "
@@ -205,26 +178,6 @@ doublereal fpValueCheck(const std::string& val)
         }
     }
     return fpValue(str);
-}
-
-std::string wrapString(const std::string& s, const int len)
-{
-    warn_deprecated("wrapString", "Unused. To be removed after Cantera 2.3.");
-    int count=0;
-    std::string r;
-    for (size_t n = 0; n < s.size(); n++) {
-        if (s[n] == '\n') {
-            count = 0;
-        } else {
-            count++;
-        }
-        if (count > len && s[n] == ' ') {
-            r += "\n     ";
-            count = 0;
-        }
-        r += s[n];
-    }
-    return r;
 }
 
 std::string parseSpeciesName(const std::string& nameStr, std::string& phaseName)

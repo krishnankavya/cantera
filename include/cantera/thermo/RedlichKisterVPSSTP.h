@@ -241,10 +241,6 @@ public:
      */
     RedlichKisterVPSSTP(XML_Node& phaseRef, const std::string& id = "");
 
-    RedlichKisterVPSSTP(const RedlichKisterVPSSTP& b);
-    RedlichKisterVPSSTP& operator=(const RedlichKisterVPSSTP& b);
-    virtual ThermoPhase* duplMyselfAsThermoPhase() const;
-
     virtual std::string type() const {
         return "RedlichKister";
     }
@@ -361,6 +357,19 @@ public:
     virtual void initThermo();
     virtual void initThermoXML(XML_Node& phaseNode, const std::string& id);
 
+    //! Add a binary species interaction with the specified parameters
+    /*!
+     * @param speciesA         name of the first species
+     * @param speciesB         name of the second species
+     * @param excess_enthalpy  coefficients of the excess enthalpy polynomial
+     * @param n_enthalpy       number of excess enthalpy polynomial coefficients
+     * @param excess_entropy   coefficients of the excess entropy polynomial
+     * @param n_entropy        number of excess entropy polynomial coefficients
+     */
+    void addBinaryInteraction(const std::string& speciesA, const std::string& speciesB,
+        const double* excess_enthalpy, size_t n_enthalpy,
+        const double* excess_entropy, size_t n_entropy);
+
     //! @}
     //! @name  Derivatives of Thermodynamic Variables needed for Applications
     //! @{
@@ -384,13 +393,6 @@ private:
      *     "binaryNeutralSpeciesParameters" containing the binary interaction
      */
     void readXMLBinarySpecies(XML_Node& xmlBinarySpecies);
-
-    //! Resize internal arrays within the object that depend upon the number
-    //! of binary Redlich-Kister interaction terms
-    /*!
-     *  @param num Number of binary Redlich-Kister interaction terms
-     */
-    void resizeNumInteractions(const size_t num);
 
     //! Initialize lengths of local variables after all species have been
     //! identified.
@@ -432,17 +434,6 @@ private:
      * respect to the log of the mole fraction.
      */
     void s_update_dlnActCoeff_dlnX_diag() const;
-
-public:
-    //! Utility routine that calculates a literature expression
-    /*!
-     *  @param VintOut  Output contribution to the voltage corresponding to
-     *      nonideal term
-     *  @param voltsOut Output contribution to the voltage corresponding to
-     *      nonideal term and mf term
-     *  @deprecated Probably broken. To be removed after Cantera 2.3.
-     */
-    void Vint(double& VintOut, double& voltsOut);
 
 protected:
     //! number of binary interaction expressions

@@ -566,9 +566,6 @@ public:
     //! Default Constructor
     DebyeHuckel();
 
-    DebyeHuckel(const DebyeHuckel&);
-    DebyeHuckel& operator=(const DebyeHuckel&);
-    virtual ThermoPhase* duplMyselfAsThermoPhase() const;
     virtual ~DebyeHuckel();
 
     //! Full constructor for creating the phase.
@@ -588,7 +585,6 @@ public:
     //! @name  Utilities
     //! @{
 
-    virtual int eosType() const;
     virtual std::string type() const {
         return "DebyeHuckel";
     }
@@ -818,6 +814,7 @@ public:
      */
 
     virtual bool addSpecies(shared_ptr<Species> spec);
+    virtual void initThermo();
     virtual void initThermoXML(XML_Node& phaseNode, const std::string& id);
 
     //! Return the Debye Huckel constant as a function of temperature
@@ -920,10 +917,30 @@ public:
      */
     double AionicRadius(int k = 0) const;
 
+    //! Set the DebyeHuckel parameterization form. Must be one of
+    //! 'dilute_limit', 'Bdot_with_variable_a', 'Bdot_with_common_a',
+    //! 'Beta_ij', or 'Pitzer_with_Beta_ij'.
+    void setDebyeHuckelModel(const std::string& form);
+
     //! Returns the form of the Debye-Huckel parameterization used
     int formDH() const {
         return m_formDH;
     }
+
+    //! Set the A_Debye parameter. If a negative value is provided, enables
+    //! calculation of A_Debye using the detailed water equation of state.
+    void setA_Debye(double A);
+
+    void setB_Debye(double B) { m_B_Debye = B; }
+    void setB_dot(double bdot);
+    void setMaxIonicStrength(double Imax) { m_maxIionicStrength = Imax; }
+    void useHelgesonFixedForm(bool mode=true) { m_useHelgesonFixedForm = mode; }
+
+    //! Set the default ionic radius [m] for each species
+    void setDefaultIonicRadius(double value);
+
+    //! Set the value for the beta interaction between species sp1 and sp2.
+    void setBeta(const std::string& sp1, const std::string& sp2, double value);
 
     //! Returns a reference to M_Beta_ij
     Array2D& get_Beta_ij() {
@@ -969,36 +986,6 @@ protected:
      * DHFORM_PITZER_BETAIJ = 4
      */
     int m_formDH;
-
-    /**
-     * Format for the generalized concentration:
-     *
-     *  0 = unity
-     *  1 = molar_volume
-     *  2 = solvent_volume    (default)
-     *
-     * The generalized concentrations can have three different forms
-     * depending on the value of the member attribute m_formGC, which
-     * is supplied in the constructor.
-     *
-     * | m_formGC | GeneralizedConc | StandardConc |
-     * | -------- | --------------- | ------------ |
-     * | 0        | X_k             | 1.0          |
-     * | 1        | X_k / V_k       | 1.0 / V_k    |
-     * | 2        | X_k / V_N       | 1.0 / V_N    |
-     *
-     * The value and form of the generalized concentration will affect reaction
-     * rate constants involving species in this phase.
-     *
-     * (HKM Note: Using option #1 may lead to spurious results and has been
-     * included only with warnings. The reason is that it molar volumes of
-     * electrolytes may often be negative. The molar volume of H+ is defined to
-     * be zero too. Either options 0 or 2 are the appropriate choice. Option 0
-     * leads to bulk reaction rate constants which have units of s-1. Option 2
-     * leads to bulk reaction rate constants for bimolecular rxns which have
-     * units of m-3 kmol-1 s-1.)
-     */
-    int m_formGC;
 
     //! Vector containing the electrolyte species type
     /*!

@@ -3,7 +3,10 @@
 Cantera
 *******
 
-Version 2.3.0a3 (development)
+Version 2.4.0a1 (development)
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.170284.svg
+   :target: https://doi.org/10.5281/zenodo.170284
 
 What is Cantera?
 ================
@@ -42,7 +45,7 @@ Ubuntu. Anaconda packages containing the Cantera Python module are also
 available for Windows, OS X, and Linux.
 
 .. image:: https://anaconda.org/cantera/cantera/badges/installer/conda.svg
-    :target: https://conda.anaconda.org/cantera
+    :target: https://anaconda.org/Cantera/cantera
 
 For other platforms, or for users wishing to install a development version of
 Cantera, `compilation instructions
@@ -56,6 +59,8 @@ offers a number of starting points:
 
 - `Python tutorial
   <http://cantera.github.io/docs/sphinx/html/cython/tutorial.html>`_
+- `Application Examples in Python
+  <https://github.com/Cantera/cantera-jupyter#cantera-jupyter>`_
 - `A guide to Cantera's input file format
   <http://cantera.github.io/docs/sphinx/html/cti/index.html>`_
 - `A list of frequently asked questions
@@ -63,6 +68,27 @@ offers a number of starting points:
 
 `Documentation for the development version of Cantera
 <http://cantera.github.com/dev-docs/sphinx/html/index.html>`_ is also available.
+
+Code of Conduct
+===============
+
+.. image:: https://img.shields.io/badge/code%20of%20conduct-contributor%20covenant-green.svg?style=flat-square
+    :alt: conduct
+    :target: http://contributor-covenant.org/version/1/4/
+
+In order to have a more open and welcoming community, Cantera adheres to a
+`code of conduct <CODE_OF_CONDUCT.md>`_ adapted from the `Contributor Covenent
+code of conduct <http://contributor-covenant.org/>`_.
+
+Please adhere to this code of conduct in any interactions you have in the
+Cantera community. It is strictly enforced on all official Cantera
+repositories, websites, users' group, and other resources.
+If you encounter someone violating these terms, please
+`contact the code of conduct team <mailto:conduct@cantera.org>`_
+(`@speth <https://github.com/speth>`_,
+`@bryanwweber <https://github.com/bryanwweber>`_, and
+`@kyleniemeyer <https://github.com/kyleniemeyer>`_)
+and we will address it as soon as possible.
 
 Development Site
 ================

@@ -53,6 +53,8 @@ cdef extern from "cantera/base/global.h" namespace "Cantera":
     cdef XML_Node* CxxGetXmlFile "Cantera::get_XML_File" (string) except +translate_exception
     cdef XML_Node* CxxGetXmlFromString "Cantera::get_XML_from_string" (string) except +translate_exception
     cdef void Cxx_make_deprecation_warnings_fatal "Cantera::make_deprecation_warnings_fatal" ()
+    cdef void Cxx_suppress_thermo_warnings "Cantera::suppress_thermo_warnings" (cbool)
+    cdef string CxxGitCommit "Cantera::gitCommit" ()
 
 cdef extern from "<memory>":
     cppclass shared_ptr "std::shared_ptr" [T]:
@@ -565,7 +567,7 @@ cdef extern from "cantera/zeroD/ReactorNet.h":
         CxxReactorNet()
         void addReactor(CxxReactor&)
         void advance(double) except +translate_exception
-        double step(double) except +translate_exception
+        double step() except +translate_exception
         void reinitialize() except +translate_exception
         double time()
         void setInitialTime(double)
@@ -629,8 +631,6 @@ cdef extern from "cantera/oneD/Domain1D.h":
         void setupGrid(size_t, double*) except +translate_exception
         void setID(string)
         string& id()
-        void setDesc(string)
-        string& desc()
 
 
 cdef extern from "cantera/oneD/Inlet1D.h":
@@ -723,6 +723,7 @@ cdef extern from "cantera/oneD/Sim1D.h":
         int domainIndex(string) except +translate_exception
         double value(size_t, size_t, size_t) except +translate_exception
         double workValue(size_t, size_t, size_t) except +translate_exception
+        void eval(double ) except +translate_exception
         size_t size()
         void solveAdjoint(const double*, double*) except +translate_exception
         void getResidual(double, double*) except +translate_exception

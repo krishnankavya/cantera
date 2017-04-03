@@ -29,34 +29,13 @@ PureFluidPhase::PureFluidPhase() :
 {
 }
 
-PureFluidPhase::PureFluidPhase(const PureFluidPhase& right) :
-    m_subflag(0),
-    m_mw(-1.0),
-    m_verbose(false)
-{
-    *this = right;
-}
-
-PureFluidPhase& PureFluidPhase::operator=(const PureFluidPhase& right)
-{
-    if (&right != this) {
-        ThermoPhase::operator=(right);
-        m_subflag = right.m_subflag;
-        m_sub.reset(tpx::GetSub(m_subflag));
-        m_mw = right.m_mw;
-        m_verbose = right.m_verbose;
-    }
-    return *this;
-}
-
-ThermoPhase* PureFluidPhase::duplMyselfAsThermoPhase() const
-{
-    return new PureFluidPhase(*this);
-}
-
 void PureFluidPhase::initThermo()
 {
-    m_sub.reset(tpx::GetSub(m_subflag));
+    if (m_tpx_name != "") {
+        m_sub.reset(tpx::newSubstance(m_tpx_name));
+    } else {
+        m_sub.reset(tpx::GetSub(m_subflag));
+    }
     if (!m_sub) {
         throw CanteraError("PureFluidPhase::initThermo",
                            "could not create new substance object.");
@@ -76,7 +55,7 @@ void PureFluidPhase::initThermo()
     p = 0.001 * p;
     m_sub->Set(tpx::PropertyPair::TP, T0, p);
 
-    m_spthermo->update_one(0, T0, &cp0_R, &h0_RT, &s0_R);
+    m_spthermo.update_single(0, T0, &cp0_R, &h0_RT, &s0_R);
     double s_R = s0_R - log(p/refPressure());
     m_sub->setStdState(h0_RT*GasConstant*298.15/m_mw,
                        s_R*GasConstant/m_mw, T0, p);
@@ -242,7 +221,7 @@ void PureFluidPhase::getGibbs_RT_ref(doublereal* grt) const
 {
     double psave = pressure();
     double t = temperature();
-    double pref = m_spthermo->refPressure();
+    double pref = refPressure();
     double plow = 1.0E-8;
     Set(tpx::PropertyPair::TP, t, plow);
     getGibbs_RT(grt);
@@ -260,7 +239,7 @@ void PureFluidPhase::getEntropy_R_ref(doublereal* er) const
 {
     double psave = pressure();
     double t = temperature();
-    double pref = m_spthermo->refPressure();
+    double pref = refPressure();
     double plow = 1.0E-8;
     Set(tpx::PropertyPair::TP, t, plow);
     getEntropy_R(er);
